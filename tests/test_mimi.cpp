@@ -17,5 +17,7 @@ int main()
 	ret = mimi_bus_init(&bus, &impl_6502_bus);
 	std::cout << "Returned with " << ret << std::endl;
 
+	std::cin.get();
+
 	return 0;
 }
