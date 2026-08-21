@@ -23,20 +23,7 @@ static int cpu_init(void** pprivate_data)
 	return 0;
 }
 
-static int bus_init(void** pprivate_data)
-{
-	if (!pprivate_data)
-		return -1;
-
-	return 0;
-}
-
 const struct mimi_cpu_impl_s impl_6502 = {
 	.init = cpu_init,
 	.reset = NULL,
-};
-
-const struct mimi_bus_impl_s impl_6502_bus = {
-	.init = bus_init,
-	.access = NULL
 };

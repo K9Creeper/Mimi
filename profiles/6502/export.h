@@ -9,7 +9,6 @@ extern "C" {
 #endif
 
 	extern const struct mimi_cpu_impl_s impl_6502;
-	extern const struct mimi_bus_impl_s	impl_6502_bus;
 
 #ifdef __cplusplus
 }

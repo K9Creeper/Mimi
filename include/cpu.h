@@ -1,8 +1,6 @@
 #ifndef CPU_H
 #define CPU_H
 
-struct mimi_cpu_s;
-
 struct mimi_cpu_impl_s {
 	int (*init)(void** pprivate_data);
 	void (*reset)(void* private_data);
@@ -10,8 +8,8 @@ struct mimi_cpu_impl_s {
 
 typedef struct mimi_cpu_s {
 	const struct mimi_cpu_impl_s* impl;
-
 	void* private_data;
+
 } mimi_cpu_t;
 
 #ifdef __cplusplus
