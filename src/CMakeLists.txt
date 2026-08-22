@@ -4,6 +4,7 @@ add_library(Mimi
     bus.c
 
     bus-dev/mem.c
+    bus-dev/rom.c
 )
 
 target_include_directories(Mimi

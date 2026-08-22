@@ -13,7 +13,7 @@ typedef enum mimi_bus_access_e {
 
 struct mimi_bus_device_impl_s {
 	int (*init)(void** pprivate_data, mimi_address_t size);
-	void (*destroy)(void** pprivate_data);
+	int (*destroy)(void** pprivate_data);
 
 	int (*read)(void* private_data, mimi_address_t address, void* data, size_t size);
 	int (*write)(void* private_data, mimi_address_t address, const void* data, size_t size);

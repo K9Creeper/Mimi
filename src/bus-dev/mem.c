@@ -4,11 +4,11 @@
 #include <string.h>
 
 struct mem_device_s {
-	void* raw_data;
+	uint8_t* raw_data;
 };
 
 static int init(void** pprivate_data, mimi_address_t size);
-static void destroy(void** pprivate_data);
+static int destroy(void** pprivate_data);
 static int read(void* private_data, mimi_address_t address, void* data, size_t size);
 static int write(void* private_data, mimi_address_t address, const void* data, size_t size);
 
@@ -30,7 +30,7 @@ static int init(void** pprivate_data, mimi_address_t size)
 
 	memset(mem, 0, sizeof(struct mem_device_s));
 
-	void* raw_data = malloc(size);
+	uint8_t* raw_data = malloc(size);
 	if (!raw_data) {
 		free(mem);
 		return -2;
@@ -43,7 +43,7 @@ static int init(void** pprivate_data, mimi_address_t size)
 	return 0;
 }
 
-static void destroy(void** pprivate_data)
+static int destroy(void** pprivate_data)
 {
 	if (!pprivate_data)
 		return -1;
