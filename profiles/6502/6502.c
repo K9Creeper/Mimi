@@ -10,7 +10,7 @@
 
 static int cpu_init(void** pprivate_data)
 {
-	if (!pprivate_data)
+	if (!pprivate_data || *pprivate_data)
 		return -1;
 
 	cpu_t* cpu = malloc(sizeof(cpu_t));
