@@ -8,6 +8,8 @@ extern "C" {
 #endif
 
 	extern const struct mimi_bus_device_impl_s rom_bus_device_impl;
+	
+	extern int mimi_rom_bus_device_special_write(void* private_data, mimi_address_t address, const void* data, size_t size);
 
 #ifdef __cplusplus
 }

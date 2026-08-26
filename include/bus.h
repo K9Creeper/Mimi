@@ -1,10 +1,9 @@
 #ifndef BUS_H
 #define BUS_H
 
-#include <stddef.h>
-#include <stdint.h>
+#include <mimi.h>
 
-typedef uintptr_t mimi_address_t;
+typedef uint32_t mimi_bus_role_id_t;
 
 typedef enum mimi_bus_access_e {
 	MIMI_BUS_READ = 0,
@@ -25,6 +24,8 @@ typedef struct mimi_bus_device_s {
 
 	mimi_address_t base;
 	mimi_address_t size;
+
+	uint8_t is_mapped;
 } mimi_bus_device_t;
 
 typedef struct mimi_bus_request_s {
@@ -54,12 +55,16 @@ typedef struct mimi_bus_s {
 extern "C" {
 #endif
 
-	int mimi_bus_init(mimi_bus_t* bus);
+	extern int mimi_bus_init(mimi_bus_t* bus);
 
-	int mimi_bus_map(mimi_bus_t* bus,mimi_bus_device_t* device,mimi_address_t address	);
+	extern int mimi_bus_destroy(mimi_bus_t* bus);
 
-	int mimi_bus_access(mimi_bus_t* bus,const mimi_bus_request_t* request);
+	extern int mimi_bus_map(mimi_bus_t* bus,mimi_bus_device_t* device,mimi_address_t address);
 
+	extern int mimi_bus_unmap(mimi_bus_t* bus,mimi_bus_device_t* device);
+	
+	extern int mimi_bus_access(mimi_bus_t* bus,const mimi_bus_request_t* request);
+	
 #ifdef __cplusplus
 }
 #endif

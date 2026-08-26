@@ -10,6 +10,9 @@ extern "C" {
 
 	extern const struct mimi_cpu_impl_s impl_6502;
 
+	#define MIMI_6502_BUS_ADDRESS 0
+
+
 #ifdef __cplusplus
 }
 #endif

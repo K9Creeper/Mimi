@@ -3,6 +3,7 @@
 #include <mimi.h>
 
 #include <bus-dev/mem.h>
+#include <bus-dev/rom.h>
 
 #include "../profiles/6502/export.h"
 
@@ -90,6 +91,7 @@ static void test_bus_access(mimi_bus_t* bus)
 
 	/*
 	 * Address 0x8000 should be ROM in the example mapping.
+	 * FYI should fail.
 	 */
 	write_value = 0x55;
 
@@ -116,7 +118,6 @@ static void test_bus_access(mimi_bus_t* bus)
 	std::cout << "Read @ 0x10000: "
 		<< "ret=" << ret << '\n';
 }
-
 
 int main()
 {
@@ -152,7 +153,7 @@ int main()
 
 	std::cout << "RAM map returned " << ret << std::endl;
 
-	ROM.impl = &memory_bus_device_impl;
+	ROM.impl = &rom_bus_device_impl;
 	ROM.size = 0x8000;
 
 	ret = mimi_bus_map(
@@ -163,7 +164,12 @@ int main()
 
 	std::cout << "ROM map returned " << ret << std::endl;
 
-	test_bus_access(&addr_bus);
+	ret = mimi_cpu_attach_bus(&cpu, &addr_bus, MIMI_6502_BUS_ADDRESS);
+	std::cout << "CPU attach bus returned " << ret << std::endl;
+
+	mimi_cpu_destroy(&cpu);
+
+	mimi_bus_destroy(&addr_bus);
 
 	std::cin.get();
 

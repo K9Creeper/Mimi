@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "export.h"
+
 typedef uint8_t register_t;
 typedef uint16_t address_t;
 
@@ -27,6 +29,8 @@ typedef struct cpu_s {
 	register_t  Y;
 
 	flags_t     flags;
+
+    mimi_bus_t* addr_bus;
 } cpu_t;
 
 #endif

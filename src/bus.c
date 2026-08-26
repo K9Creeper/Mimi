@@ -9,10 +9,24 @@ static struct mimi_bus_device_node_s* device_remove_node(struct mimi_bus_device_
 static struct mimi_bus_device_node_s* device_insert(struct mimi_bus_device_node_s* root, struct mimi_bus_device_node_s* node);
 static int device_remove(mimi_bus_t* bus, mimi_bus_device_t* device);
 
+static void device_destroy_tree(struct mimi_bus_device_node_s* root);
+
 int mimi_bus_init(mimi_bus_t* bus)
 {
 	if (!bus)
 		return -1;
+
+	memset(bus, 0, sizeof(*bus));
+
+	return 0;
+}
+
+int mimi_bus_destroy(mimi_bus_t* bus)
+{
+	if (!bus)
+		return -1;
+
+	device_destroy_tree(bus->root);
 
 	memset(bus, 0, sizeof(*bus));
 
@@ -28,6 +42,9 @@ int mimi_bus_map(mimi_bus_t* bus, mimi_bus_device_t* device, mimi_address_t addr
 		return -1;
 
 	if (address > UINTPTR_MAX - device->size)
+		return -1;
+
+	if (device->is_mapped)
 		return -1;
 
 	mimi_address_t end = address + device->size;
@@ -52,6 +69,7 @@ int mimi_bus_map(mimi_bus_t* bus, mimi_bus_device_t* device, mimi_address_t addr
 	}
 
 	device->base = address;
+	device->is_mapped = 1;
 
 	node->device = device;
 	node->left = NULL;
@@ -62,6 +80,28 @@ int mimi_bus_map(mimi_bus_t* bus, mimi_bus_device_t* device, mimi_address_t addr
 	return 0;
 }
 
+int mimi_bus_unmap(mimi_bus_t* bus, mimi_bus_device_t* device)
+{
+	if (!bus || !device)
+		return -1;
+
+	if (!device->is_mapped)
+		return -1;
+
+	int ret = device_remove(bus, device);
+
+	if (ret)
+		return ret;
+
+	if (device->impl && device->impl->destroy) {
+		device->impl->destroy(&device->private_data);
+	}
+
+	device->base = 0;
+	device->is_mapped = 0;
+
+	return 0;
+}
 
 int mimi_bus_access(mimi_bus_t* bus, const mimi_bus_request_t* request)
 {
@@ -239,4 +279,21 @@ static int device_remove(mimi_bus_t* bus, mimi_bus_device_t* device)
 	);
 
 	return removed ? 0 : 1;
+}
+
+static void device_destroy_tree(struct mimi_bus_device_node_s* root)
+{
+	if (!root)
+		return;
+
+	device_destroy_tree(root->left);
+	device_destroy_tree(root->right);
+
+	mimi_bus_device_t* device = root->device;
+
+	if (device && device->impl && device->impl->destroy) {
+		device->impl->destroy(&device->private_data);
+	}
+
+	free(root);
 }
