@@ -20,11 +20,13 @@ typedef struct flags_s {
 } flags_t;
 static_assert(sizeof(flags_t) == sizeof(register_t), "flags_t must be exactly 1 byte (the size of the architecture's register)");
 
-typedef enum state_e {
-	CPU_RESET = 0,
-	CPU_FETCH,
-	CPU_EXECUTE
-} state_t;
+typedef enum cpu_sequence_e {
+	CPU_SEQ_RESET,
+	CPU_SEQ_FETCH,
+	CPU_SEQ_DECODE,
+	CPU_SEQ_EXECUTE,
+	CPU_SEQ_INTERRUPT
+} cpu_sequence_t;
 
 typedef enum mode_e {
 	IMPLICIT_MODE = 0,
@@ -55,12 +57,16 @@ typedef struct cpu_s {
 		register_t	P;
 	};
 
-	state_t	state;
-	uint64_t cycles;
-	uint8_t  cycle;
-
 	mode_t mode;
 	mimi_bus_t* addr_bus;
+
+	cpu_sequence_t cur_seq;
+	uint8_t  cycle;
+
+	uint8_t irq_pending;
+	uint8_t nmi_pending;
+
+	uint64_t cycles;
 } cpu_t;
 
 #endif

@@ -8,9 +8,9 @@
 #include "../profiles/6502/export.h"
 
 static const uint8_t test_memory[] = {
-	0x1, 0x2, 0x3, 0x1, 0x2, 0x3,
-	0xD, 0xE, 0xA, 0xD, 0xB, 0xE,
-	0xE, 0xF
+	0x00, 0x80
+	// FFFC // FFFD
+	// 0x8000
 };
 
 int main()
@@ -49,14 +49,17 @@ int main()
 		0x8000
 	);
 
-	ret = mimi_rom_bus_device_special_write(ROM.private_data, 0x0, test_memory, sizeof(test_memory));
+	ret = mimi_rom_bus_device_special_write(ROM.private_data, ((0x8000) - (0x10000 - 0xFFFC)), test_memory, sizeof(test_memory));
 
 	ret = mimi_cpu_attach_bus(&cpu, &addr_bus, MIMI_6502_BUS_ADDRESS);
 	std::cout << "CPU attach bus returned " << ret << std::endl;
 	
-	ret = mimi_cpu_tick(&cpu);
-	std::cout << "CPU tick returned " << ret << std::endl;
-
+	for (;;) {
+		ret = mimi_cpu_tick(&cpu);
+		std::cout << "CPU tick returned " << ret << std::endl;
+		if (ret)
+			break;
+	}
 	mimi_cpu_destroy(&cpu);
 
 	mimi_bus_destroy(&addr_bus);
