@@ -7,10 +7,10 @@ struct rom_device_s {
 	uint8_t* raw_data;
 };
 
-static int init(void** pprivate_data, mimi_address_t size);
-static int destroy(void** pprivate_data);
-static int read(void* private_data, mimi_address_t address, void* data, size_t size);
-static int write(void* private_data, mimi_address_t address, const void* data, size_t size);
+static int init(struct rom_device_s** prom, mimi_address_t size);
+static int destroy(struct rom_device_s** prom);
+static int read(struct rom_device_s* rom, mimi_address_t address, void* data, size_t size);
+static int write(struct rom_device_s* rom, mimi_address_t address, const void* data, size_t size);
 
 const struct mimi_bus_device_impl_s rom_bus_device_impl = {
 	.init = init,
@@ -35,36 +35,36 @@ int mimi_rom_bus_device_special_write(void* private_data, mimi_address_t address
 	return 0;
 }
 
-static int init(void** pprivate_data, mimi_address_t size)
+static int init(struct rom_device_s** prom, mimi_address_t size)
 {
-	if (!pprivate_data || *pprivate_data)
+	if (!prom || *prom)
 		return -1;
 
-	struct rom_device_s* mem = malloc(sizeof(struct rom_device_s));
-	if (!mem)
+	struct rom_device_s* rom = malloc(sizeof(struct rom_device_s));
+	if (!rom)
 		return -2;
 
-	memset(mem, 0, sizeof(struct rom_device_s));
+	memset(rom, 0, sizeof(struct rom_device_s));
 
 	uint8_t* raw_data = malloc(size);
 	if (!raw_data) {
-		free(mem);
+		free(rom);
 		return -2;
 	}
 
 	memset(raw_data, 0, size);
 
-	mem->raw_data = raw_data;
-	*pprivate_data = mem;
+	rom->raw_data = raw_data;
+	*prom = rom;
 	return 0;
 }
 
-static int destroy(void** pprivate_data)
+static int destroy(struct rom_device_s** prom)
 {
-	if (!pprivate_data)
+	if (!prom)
 		return -1;
 
-	struct rom_device_s* rom = *pprivate_data;
+	struct rom_device_s* rom = *prom;
 	if (!rom)
 		return 0;
 
@@ -74,16 +74,14 @@ static int destroy(void** pprivate_data)
 	}
 	free(rom);
 
-	*pprivate_data = NULL;
+	*prom = NULL;
 	return 0;
 }
 
-static int read(void* private_data, mimi_address_t address, void* data, size_t size)
+static int read(struct rom_device_s* rom, mimi_address_t address, void* data, size_t size)
 {
-	if (!private_data || !data)
+	if (!rom || !data)
 		return -1;
-
-	struct rom_device_s* rom = private_data;
 
 	if (!rom->raw_data)
 		return -1;
@@ -94,7 +92,7 @@ static int read(void* private_data, mimi_address_t address, void* data, size_t s
 	return 0;
 }
 
-static int write(void* private_data, mimi_address_t address, const void* data, size_t size)
+static int write(struct rom_device_s* rom, mimi_address_t address, const void* data, size_t size)
 {
 	return 1;
 }

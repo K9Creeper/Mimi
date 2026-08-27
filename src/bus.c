@@ -5,10 +5,8 @@
 
 static int device_overlaps(struct mimi_bus_device_node_s* root, mimi_address_t base, mimi_address_t end);
 static struct mimi_bus_device_node_s* device_remove_node(struct mimi_bus_device_node_s* root, mimi_bus_device_t* device, int* removed);
-
 static struct mimi_bus_device_node_s* device_insert(struct mimi_bus_device_node_s* root, struct mimi_bus_device_node_s* node);
 static int device_remove(mimi_bus_t* bus, mimi_bus_device_t* device);
-
 static void device_destroy_tree(struct mimi_bus_device_node_s* root);
 
 int mimi_bus_init(mimi_bus_t* bus)

@@ -38,3 +38,14 @@ int mimi_cpu_attach_bus(mimi_cpu_t* cpu, mimi_bus_t* bus, mimi_bus_role_id_t rol
 
 	return cpu->impl->attach_bus(cpu->private_data, bus, role);
 }
+
+int mimi_cpu_tick(mimi_cpu_t* cpu)
+{
+	if (!cpu || !cpu->impl)
+		return -1;
+
+	if (!cpu->impl->tick)
+		return -1;
+
+	return cpu->impl->tick(cpu->private_data);
+}

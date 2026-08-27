@@ -7,10 +7,10 @@ struct mem_device_s {
 	uint8_t* raw_data;
 };
 
-static int init(void** pprivate_data, mimi_address_t size);
-static int destroy(void** pprivate_data);
-static int read(void* private_data, mimi_address_t address, void* data, size_t size);
-static int write(void* private_data, mimi_address_t address, const void* data, size_t size);
+static int init(struct mem_device_s** pmem, mimi_address_t size);
+static int destroy(struct mem_device_s** pmem);
+static int read(struct mem_device_s* mem, mimi_address_t address, void* data, size_t size);
+static int write(struct mem_device_s* mem, mimi_address_t address, const void* data, size_t size);
 
 const struct mimi_bus_device_impl_s memory_bus_device_impl = {
 	.init = init,
@@ -19,9 +19,9 @@ const struct mimi_bus_device_impl_s memory_bus_device_impl = {
 	.write = write
 };
 
-static int init(void** pprivate_data, mimi_address_t size)
+static int init(struct mem_device_s** pmem, mimi_address_t size)
 {
-	if (!pprivate_data || *pprivate_data)
+	if (!pmem || *pmem)
 		return -1;
 
 	struct mem_device_s* mem = malloc(sizeof(struct mem_device_s));
@@ -39,16 +39,16 @@ static int init(void** pprivate_data, mimi_address_t size)
 	memset(raw_data, 0, size);
 
 	mem->raw_data = raw_data;
-	*pprivate_data = mem;
+	*pmem = mem;
 	return 0;
 }
 
-static int destroy(void** pprivate_data)
+static int destroy(struct mem_device_s** pmem)
 {
-	if (!pprivate_data)
+	if (!pmem)
 		return -1;
 
-	struct mem_device_s* mem = *pprivate_data;
+	struct mem_device_s* mem = *pmem;
 	if (!mem)
 		return 0;
 
@@ -58,16 +58,14 @@ static int destroy(void** pprivate_data)
 	}
 	free(mem);
 
-	*pprivate_data = NULL;
+	*pmem = NULL;
 	return 0;
 }
 
-static int read(void* private_data, mimi_address_t address, void* data, size_t size)
+static int read(struct mem_device_s* mem, mimi_address_t address, void* data, size_t size)
 {
-	if (!private_data || !data)
+	if (!mem || !data)
 		return -1;
-
-	struct mem_device_s* mem = private_data;
 
 	if (!mem->raw_data)
 		return -1;
@@ -78,12 +76,10 @@ static int read(void* private_data, mimi_address_t address, void* data, size_t s
 	return 0;
 }
 
-static int write(void* private_data, mimi_address_t address, const void* data, size_t size)
+static int write(struct mem_device_s* mem, mimi_address_t address, const void* data, size_t size)
 {
-	if (!private_data || !data)
+	if (!mem || !data)
 		return -1;
-
-	struct mem_device_s* mem = private_data;
 
 	if (!mem->raw_data)
 		return -1;

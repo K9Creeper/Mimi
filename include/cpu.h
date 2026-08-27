@@ -9,6 +9,8 @@ struct mimi_cpu_impl_s {
 	int (*destroy)(void** pprivate_data);
 
 	int (*attach_bus)(void* private_data, mimi_bus_t* bus, mimi_bus_role_id_t role);
+	
+	int (*tick)(void* private_data);
 
 	void (*reset)(void* private_data);
 };
@@ -28,6 +30,7 @@ extern "C" {
 	
 	extern int mimi_cpu_attach_bus(mimi_cpu_t* cpu, mimi_bus_t* bus, mimi_bus_role_id_t role);
 
+	extern int mimi_cpu_tick(mimi_cpu_t* cpu);
 
 #ifdef __cplusplus
 }
