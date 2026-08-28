@@ -12,11 +12,12 @@
 static inline address_t get_stack_address(cpu_t* cpu);
 static inline void update_cpu_seq(cpu_t* cpu, cpu_sequence_t seq);
 
-static inline int read_byte(cpu_t* cpu, address_t address, uint8_t* data);
-static inline int write_byte(cpu_t* cpu, address_t address, const uint8_t* data);
+static inline int cpu_read(cpu_t* cpu, address_t address, uint8_t* data);
+static inline int cpu_write(cpu_t* cpu, address_t address, const uint8_t* data);
 
 static int tick_reset(cpu_t* cpu);
 static int tick_fetch(cpu_t* cpu);
+static int tick_execute(cpu_t* cpu);
 
 static int init(cpu_t** pcpu);
 static int destroy(cpu_t** pcpu);
@@ -100,15 +101,9 @@ static int tick(cpu_t* cpu)
 			break;
 		}
 
-		case CPU_SEQ_DECODE:
-		{
-			ret = 1;
-			break;
-		}
-
 		case CPU_SEQ_EXECUTE:
 		{
-			ret = 1;
+			ret = tick_execute(cpu);
 			break;
 		}
 
@@ -144,7 +139,7 @@ static int tick_reset(cpu_t* cpu)
 			address_t addr = 0x00FF;
 
 			uint8_t dummy;
-			ret = read_byte(cpu, 0x00FF, &dummy);
+			ret = cpu_read(cpu, 0x00FF, &dummy);
 
 			if (!ret) {
 				cpu->cycle++;
@@ -159,7 +154,7 @@ static int tick_reset(cpu_t* cpu)
 			address_t addr = get_stack_address(cpu);
 
 			uint8_t dummy;
-			ret = read_byte(cpu, addr, &dummy);
+			ret = cpu_read(cpu, addr, &dummy);
 
 			if (!ret) {
 				cpu->SP--;
@@ -173,7 +168,7 @@ static int tick_reset(cpu_t* cpu)
 			address_t addr = 0xFFFC;
 
 			uint8_t low_reset;
-			ret = read_byte(cpu, addr, &low_reset);
+			ret = cpu_read(cpu, addr, &low_reset);
 
 			if (!ret) {
 				cpu->PC = ((cpu->PC & 0xFF00) | low_reset);
@@ -188,7 +183,7 @@ static int tick_reset(cpu_t* cpu)
 			address_t addr = 0xFFFD;
 
 			uint8_t high_reset;
-			ret = read_byte(cpu, addr, &high_reset);
+			ret = cpu_read(cpu, addr, &high_reset);
 			
 			if (!ret) {
 				cpu->PC |= ((address_t)(high_reset << 8) & 0xFF00);
@@ -213,11 +208,24 @@ static int tick_fetch(cpu_t* cpu)
 	if (!cpu)
 		return -1;
 	
-	printf("fetch PC: 0x%X\n", cpu->PC);
-
 	int ret;
 	switch (cpu->cycle)
 	{
+		case 0:
+		{
+			address_t addr = cpu->PC;
+
+			uint8_t instruction;
+			ret = cpu_read(cpu, addr, &instruction);
+			if (!ret)
+			{
+				cpu->IR = instruction;
+				cpu->PC++;
+
+				update_cpu_seq(cpu, CPU_SEQ_EXECUTE);
+			}
+			break;
+		}
 		default:
 		{
 			ret = -1;
@@ -228,7 +236,17 @@ static int tick_fetch(cpu_t* cpu)
 	return ret;
 }
 
-static inline int read_byte(cpu_t* cpu, address_t address, uint8_t* data)
+static int tick_execute(cpu_t* cpu)
+{
+	if (!cpu)
+		return -1;
+
+	printf("Executing instruction 0x%x.\n", cpu->IR);
+
+	return 1;
+}
+
+static inline int cpu_read(cpu_t* cpu, address_t address, uint8_t* data)
 {
 	mimi_bus_request_t req = {
 		.access = MIMI_BUS_READ,
@@ -240,7 +258,7 @@ static inline int read_byte(cpu_t* cpu, address_t address, uint8_t* data)
 	return 	mimi_bus_access(cpu->addr_bus, &req);
 }
 
-static inline int write_byte(cpu_t* cpu, address_t address, const uint8_t* data)
+static inline int cpu_write(cpu_t* cpu, address_t address, const uint8_t* data)
 {
 	mimi_bus_request_t req = {
 		.access = MIMI_BUS_WRITE,

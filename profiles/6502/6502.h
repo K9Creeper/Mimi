@@ -23,7 +23,6 @@ static_assert(sizeof(flags_t) == sizeof(register_t), "flags_t must be exactly 1 
 typedef enum cpu_sequence_e {
 	CPU_SEQ_RESET,
 	CPU_SEQ_FETCH,
-	CPU_SEQ_DECODE,
 	CPU_SEQ_EXECUTE,
 	CPU_SEQ_INTERRUPT
 } cpu_sequence_t;
