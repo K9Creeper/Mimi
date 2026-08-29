@@ -9,6 +9,8 @@
 #include <cpu.h>
 #include <bus.h>
 
+#include "opcodes.h"
+
 static inline address_t get_stack_address(cpu_t* cpu);
 static inline void update_cpu_seq(cpu_t* cpu, cpu_sequence_t seq);
 
@@ -241,9 +243,12 @@ static int tick_execute(cpu_t* cpu)
 	if (!cpu)
 		return -1;
 
-	printf("Executing instruction 0x%x.\n", cpu->IR);
+	opcode_handle_t handle = find_opcode_handle(cpu->IR);
+	printf("Executing instruction 0x%x (func: %p).\n", cpu->IR, handle);
+	if (!handle)
+		return 1;
 
-	return 1;
+	return handle(cpu);
 }
 
 static inline int cpu_read(cpu_t* cpu, address_t address, uint8_t* data)
