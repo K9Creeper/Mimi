@@ -243,12 +243,15 @@ static int tick_execute(cpu_t* cpu)
 	if (!cpu)
 		return -1;
 
-	opcode_handle_t handle = lookup_opcode(cpu->IR, cpu->mode);
-	if (!handle)
+	const instruction_t* instr = lookup_opcode(cpu->IR);
+	if (!instr || instr->mode != cpu->mode)
 		return 1;
 	
-	int ret = handle(cpu);
-	if (ret) return 2;
+	if (!instr->handle)
+		return 2;
+
+	int ret = instr->handle(cpu);
+	if (ret) return 3;
 	
 	uint8_t int_pending = (cpu->nmi_pending || (cpu->irq_pending && cpu->flags.I));
 	cpu_sequence_t next_seq = int_pending ? CPU_SEQ_INTERRUPT : CPU_SEQ_FETCH;

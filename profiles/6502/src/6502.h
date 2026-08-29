@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "export.h"
+#include <export.h>
 
 typedef uint8_t register_t;
 typedef uint16_t address_t;

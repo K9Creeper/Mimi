@@ -6,7 +6,7 @@
 #include <bus-dev/mem.h>
 #include <bus-dev/rom.h>
 
-#include "../profiles/6502/export.h"
+#include "../profiles/6502/include/export.h"
 
 // Program at $8000:
 //	 NOP			; DA
