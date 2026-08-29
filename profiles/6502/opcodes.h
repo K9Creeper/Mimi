@@ -9,10 +9,14 @@ typedef int (*opcode_handle_t)(cpu_t* cpu);
 extern "C" {
 #endif
 
-	extern opcode_handle_t find_opcode_handle(register_t opcode);
+	extern opcode_handle_t lookup_opcode(register_t opcode, mode_t addr_mode);
 
 #ifdef __cplusplus
 }
 #endif
+
+#define OPCODE_LIST(X)		\
+	X(a9, IMPLICIT_MODE)	\
+	X(da, IMPLICIT_MODE)
 
 #endif

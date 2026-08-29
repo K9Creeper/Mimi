@@ -243,12 +243,18 @@ static int tick_execute(cpu_t* cpu)
 	if (!cpu)
 		return -1;
 
-	opcode_handle_t handle = find_opcode_handle(cpu->IR);
-	printf("Executing instruction 0x%x (func: %p).\n", cpu->IR, handle);
+	opcode_handle_t handle = lookup_opcode(cpu->IR, cpu->mode);
 	if (!handle)
 		return 1;
-
-	return handle(cpu);
+	
+	int ret = handle(cpu);
+	if (ret) return 2;
+	
+	uint8_t int_pending = (cpu->nmi_pending || (cpu->irq_pending && cpu->flags.I));
+	cpu_sequence_t next_seq = int_pending ? CPU_SEQ_INTERRUPT : CPU_SEQ_FETCH;
+	
+	update_cpu_seq(cpu, next_seq);
+	return 0;
 }
 
 static inline int cpu_read(cpu_t* cpu, address_t address, uint8_t* data)

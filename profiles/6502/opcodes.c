@@ -1,37 +1,47 @@
 #include "opcodes.h"
 
-#define MAX_COL 16
-#define MAX_ROW 16
+#define OPCODE_TO_FN(op) x##op
 
-static int fail_handle(cpu_t* cpu)
-{
-	return -1;
-}
+#define OPCODE_DECL(op, ...)    \
+    static int OPCODE_TO_FN(op)(cpu_t *cpu);
+#define DEFINE_OPCODE(op) \
+    static int OPCODE_TO_FN(op)(cpu_t *cpu)
 
-static const opcode_handle_t opcode_table[MAX_ROW][MAX_COL];
+OPCODE_LIST(OPCODE_DECL)
 
-opcode_handle_t find_opcode_handle(register_t opcode)
-{
-	uint8_t hi = (opcode >> 4) & 0x0F;
-	uint8_t lo = opcode & 0x0F;
-	return opcode_table[hi][lo];
-}
-
-static const opcode_handle_t opcode_table[MAX_ROW][MAX_COL] = {
-	{ fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle },
-	{ fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle },
-	{ fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle },
-	{ fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle },
-	{ fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle },
-	{ fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle },
-	{ fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle },
-	{ fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle },
-	{ fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle },
-	{ fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle },
-	{ fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, NULL, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle },
-	{ fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle },
-	{ fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle },
-	{ fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle },
-	{ fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle },
-	{ fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle, fail_handle }
+struct opcode_s {
+    mode_t mode;
+    opcode_handle_t handle;
 };
+
+OPCODE_LIST(OPCODE_DECL)
+
+#define OPCODE_ENTRY(op, addr_mode) \
+    [0x##op] = { .handle = OPCODE_TO_FN(op), .mode = ##addr_mode },
+
+static struct opcode_s opcode_table[256] = {
+    OPCODE_LIST(OPCODE_ENTRY)
+};
+
+opcode_handle_t lookup_opcode(register_t opcode, mode_t addr_mode)
+{
+    struct opcode_s op = opcode_table[opcode];
+    if (op.mode != addr_mode)
+        return -1;
+    return op.handle;
+}
+
+#include <stdio.h>
+
+DEFINE_OPCODE(a9)
+{
+    printf("Executing LDA #. ");
+    printf("FAILING PURPOSEFULLY.\n");
+    return 1;
+}
+
+DEFINE_OPCODE(da)
+{
+    printf("Executing NOP.\n");
+    return 0;
+}

@@ -9,12 +9,15 @@
 #include "../profiles/6502/export.h"
 
 // Program at $8000:
-//
+//	 NOP			; DA
+//	 NOP			; DA
 //   LDA #$42       ; A9 42
 //   STA $0200      ; 8D 00 02
 //   JMP $8000      ; 4C 00 80
 //
 static const uint8_t test_program[] = {
+	0xDA, 
+	0xDA,
 	0xA9, 0x42,
 	0x8D, 0x00, 0x02,
 	0x4C, 0x00, 0x80
