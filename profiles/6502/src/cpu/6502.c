@@ -11,6 +11,9 @@
 
 #include "opcodes.h"
 
+static uint8_t bus_used_read;
+static inline void print_cpu_state(cpu_t* cpu);
+
 static inline address_t get_stack_address(cpu_t* cpu);
 static inline void update_cpu_seq(cpu_t* cpu, cpu_sequence_t seq);
 static inline mimi_err_t cpu_read(cpu_t* cpu);
@@ -42,12 +45,12 @@ mimi_err_t mimi_6502_cpu_read(cpu_t* cpu)
 		.data.read = &cpu->data,
 		.size = sizeof(uint8_t)
 	};
-	
-	cpu->bus_rw = 0;
+
+	bus_used_read = 1;
 	return mimi_bus_access(cpu->bus, &req);
 }
 
-mimi_err_t mimi_6502_cpu_write(cpu_t* cpu){
+mimi_err_t mimi_6502_cpu_write(cpu_t* cpu) {
 	mimi_bus_request_t req = {
 		.access = MIMI_BUS_WRITE,
 		.address = (mimi_address_t)((((address_t)cpu->addr_hi << 8) & 0x00FF00) | cpu->addr_lo),
@@ -55,7 +58,7 @@ mimi_err_t mimi_6502_cpu_write(cpu_t* cpu){
 		.size = sizeof(uint8_t)
 	};
 
-	cpu->bus_rw = 1;
+	bus_used_read = 0;
 	return mimi_bus_access(cpu->bus, &req);
 }
 
@@ -100,16 +103,16 @@ static int attach_bus(cpu_t* cpu, mimi_bus_t* bus, mimi_bus_role_id_t role)
 		return MIMI_6502_ERR_BAD_ARG;
 
 	switch (role) {
-		case MIMI_6502_BUS:
-		{
-			cpu->bus = bus;
-			break;
-		}
+	case MIMI_6502_BUS:
+	{
+		cpu->bus = bus;
+		break;
+	}
 
-		default: {
-			return MIMI_6502_ERR_NOT_FOUND;
-			break;
-		}
+	default: {
+		return MIMI_6502_ERR_NOT_FOUND;
+		break;
+	}
 	}
 
 	return MIMI_6502_OK;
@@ -120,65 +123,40 @@ static int tick(cpu_t* cpu)
 	if (!cpu)
 		return MIMI_6502_ERR_UNACC_DATA;
 
-	{
-		printf("#%llu AB:%02X%02X D:%02X R/W:%u PC:%04X A:%02X X:%02X Y:%02X SP:%02X P:%02X IR:%02X ",
-			(unsigned long long)cpu->cycles,
-			(unsigned int)cpu->addr_hi,
-			(unsigned int)cpu->addr_lo,
-			(unsigned int)cpu->data,
-			(unsigned int)cpu->bus_rw,
-			(unsigned int)cpu->PC,
-			(unsigned int)cpu->A,
-			(unsigned int)cpu->X,
-			(unsigned int)cpu->Y,
-			(unsigned int)cpu->SP,
-			(unsigned int)cpu->P,
-			(unsigned int)cpu->IR);
-
-		if (cpu->bus_rw)
-			printf("READ $%04X = $%02X",
-				(unsigned int)(((address_t)cpu->addr_hi << 8) | cpu->addr_lo),
-				(unsigned int)cpu->data);
-		else
-			printf("WRITE $%04X = $%02X",
-				(unsigned int)(((address_t)cpu->addr_hi << 8) | cpu->addr_lo),
-				(unsigned int)cpu->data);
-
-		printf("\n");
-	}
-
 	int ret;
 	switch (cpu->cur_seq) {
-		case CPU_SEQ_RESET:
-		{
-			ret = tick_reset(cpu);
-			break;
-		}
-
-		case CPU_SEQ_FETCH:
-		{
-			ret = tick_fetch(cpu);
-			break;
-		}
-
-		case CPU_SEQ_EXECUTE:
-		{
-			ret = tick_execute(cpu);
-			break;
-		}
-
-		case CPU_SEQ_INTERRUPT:
-		{
-			ret = tick_interrupt(cpu);
-			break;
-		}
-
-		default:
-		{
-			ret = MIMI_6502_ERR_NOT_FOUND;
-			break;
-		}
+	case CPU_SEQ_RESET:
+	{
+		ret = tick_reset(cpu);
+		break;
 	}
+
+	case CPU_SEQ_FETCH:
+	{
+		ret = tick_fetch(cpu);
+		break;
+	}
+
+	case CPU_SEQ_EXECUTE:
+	{
+		ret = tick_execute(cpu);
+		break;
+	}
+
+	case CPU_SEQ_INTERRUPT:
+	{
+		ret = tick_interrupt(cpu);
+		break;
+	}
+
+	default:
+	{
+		ret = MIMI_6502_ERR_NOT_FOUND;
+		break;
+	}
+	}
+	
+	print_cpu_state(cpu);
 
 	cpu->cycles++;
 	return ret;
@@ -342,7 +320,7 @@ static inline mimi_err_t cpu_read(cpu_t* cpu)
 	return mimi_6502_cpu_read(cpu);
 }
 
-static inline mimi_err_t cpu_write(cpu_t* cpu){
+static inline mimi_err_t cpu_write(cpu_t* cpu) {
 	return mimi_6502_cpu_write(cpu);
 }
 
@@ -363,4 +341,35 @@ static inline void update_cpu_seq(cpu_t* cpu, cpu_sequence_t seq)
 	cpu->cur_seq = seq;
 	cpu->seq_cycle = 0;
 	printf("Switched to %s.\n", seq_str[seq]);
+}
+
+static inline void print_cpu_state(cpu_t* cpu)
+{
+	if (cpu)
+	{
+		printf("#%llu AB:%02X%02X D:%02X R/W:%u PC:%04X A:%02X X:%02X Y:%02X SP:%02X P:%02X IR:%02X ",
+			(unsigned long long)cpu->cycles,
+			(unsigned int)cpu->addr_hi,
+			(unsigned int)cpu->addr_lo,
+			(unsigned int)cpu->data,
+			(unsigned int)0x01,
+			(unsigned int)cpu->PC,
+			(unsigned int)cpu->A,
+			(unsigned int)cpu->X,
+			(unsigned int)cpu->Y,
+			(unsigned int)cpu->SP,
+			(unsigned int)cpu->P,
+			(unsigned int)cpu->IR);
+
+		if (bus_used_read)
+			printf("READ $%04X = $%02X",
+				(unsigned int)(((address_t)cpu->addr_hi << 8) | cpu->addr_lo),
+				(unsigned int)cpu->data);
+		else
+			printf("WRITE $%04X = $%02X",
+				(unsigned int)(((address_t)cpu->addr_hi << 8) | cpu->addr_lo),
+				(unsigned int)cpu->data);
+
+		printf("\n");
+	}
 }

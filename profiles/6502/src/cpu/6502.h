@@ -58,7 +58,6 @@ typedef struct cpu_s {
 
 	mode_t mode;
 	mimi_bus_t* bus;
-	uint8_t bus_rw;
 
 	register_t	addr_lo;
 	register_t	addr_hi;
