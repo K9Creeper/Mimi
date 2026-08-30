@@ -128,6 +128,31 @@ static int tick(cpu_t* cpu)
 		}
 	}
 
+	{
+		printf("6502 State:\n");
+		printf("  PC:     $%04X\n", (unsigned int)cpu->PC);
+		printf("  IR:     $%02X\n", (unsigned int)cpu->IR);
+		printf("  SP:     $%02X\n", (unsigned int)cpu->SP);
+		printf("  A:      $%02X\n", (unsigned int)cpu->A);
+		printf("  X:      $%02X\n", (unsigned int)cpu->X);
+		printf("  Y:      $%02X\n", (unsigned int)cpu->Y);
+		printf("  P:      $%02X\n", (unsigned int)cpu->P);
+		printf("   N=%u ", (unsigned int)cpu->flags.N);
+		printf("V=%u ", (unsigned int)cpu->flags.V);
+		printf("B=%u ", (unsigned int)cpu->flags.B);
+		printf("D=%u ", (unsigned int)cpu->flags.D);
+		printf("I=%u ", (unsigned int)cpu->flags.I);
+		printf("Z=%u ", (unsigned int)cpu->flags.Z);
+		printf("C=%u\n", (unsigned int)cpu->flags.C);
+
+		printf("  Mode:   %d\n", cpu->mode);
+		printf("  Seq:    %d\n", cpu->cur_seq);
+		printf("  Cycle:  %u\n", (unsigned int)cpu->cycle);
+		printf("  IRQ:    %u\n", (unsigned int)cpu->irq_pending);
+		printf("  NMI:    %u\n", (unsigned int)cpu->nmi_pending);
+		printf("  Cycles: %llu\n", (unsigned long long)cpu->cycles);
+	}
+
 	cpu->cycles++;
 	return ret;
 }
@@ -240,6 +265,7 @@ static int tick_fetch(cpu_t* cpu)
 			{
 				cpu->IR = instruction;
 				cpu->PC++;
+				cpu->cycle++;
 
 				update_cpu_seq(cpu, CPU_SEQ_EXECUTE);
 				return MIMI_6502_OK;
@@ -270,8 +296,16 @@ static int tick_execute(cpu_t* cpu)
 	if (!instr->handle)
 		return MIMI_6502_ERR_GENERIC;
 
-	int err = instr->handle(cpu);
-	if (err != MIMI_6502_OK) return err;
+	uint8_t instr_done = 1;
+	int err = instr->handle(cpu, &instr_done);
+
+	printf("returned 0x%x with %u.\n", err, instr_done);
+
+	if (err != MIMI_6502_OK) 
+		return err;
+	
+	if (!instr_done)
+		return MIMI_6502_OK;
 
 	uint8_t int_pending = (cpu->nmi_pending || (cpu->irq_pending && cpu->flags.I));
 	cpu_sequence_t next_seq = int_pending ? CPU_SEQ_INTERRUPT : CPU_SEQ_FETCH;

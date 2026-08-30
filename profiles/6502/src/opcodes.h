@@ -5,7 +5,7 @@
 
 typedef struct instruction_s {
     mode_t mode;
-    int (*handle)(cpu_t* cpu);
+    int (*handle)(cpu_t* cpu, uint8_t* done);
 } instruction_t;
 
 #ifdef __cplusplus
@@ -25,8 +25,8 @@ extern "C" {
 #define OPCODE_TO_FN(op, ...) x##op
 
 #define OPCODE_DECL(op, ...)    \
-    static int OPCODE_TO_FN(op)(cpu_t *cpu);
+    static int OPCODE_TO_FN(op)(cpu_t *cpu, uint8_t* done);
 #define DEFINE_OPCODE(op, ...) \
-    static int OPCODE_TO_FN(op)(cpu_t *cpu)
+    static int OPCODE_TO_FN(op)(cpu_t *cpu, uint8_t* done)
 
 #endif

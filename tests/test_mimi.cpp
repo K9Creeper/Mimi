@@ -100,10 +100,10 @@ int main()
 	for (;;) {
 		ret = mimi_cpu_tick(&cpu);
 
-		std::cout << "CPU tick returned " << ret << std::endl;
-
-		if (ret)
+		if (ret) {
+			std::cout << "Failed with " << ret << std::endl;
 			break;
+		}
 	}
 
 	mimi_cpu_destroy(&cpu);
