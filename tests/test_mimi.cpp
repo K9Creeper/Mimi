@@ -6,7 +6,7 @@
 #include "../profiles/6502/include/export.h"
 
 // Program at $8000:
-//	 NOP			; EA
+//	 NOP			; EA		
 //   LDA #$42       ; A9 42
 //   STA $0200      ; 8D 00 02
 //   JMP $8000      ; 4C 00 80
@@ -92,7 +92,7 @@ int main()
 
 	std::cout << "CPU attach bus returned " << ret << std::endl;
 
-	for (;;) {
+	for (size_t i = 0; i < 50; i++) {
 		ret = mimi_cpu_tick(&cpu);
 
 		if (ret) {

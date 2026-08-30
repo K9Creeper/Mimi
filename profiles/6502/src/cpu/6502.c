@@ -13,13 +13,13 @@
 
 static inline address_t get_stack_address(cpu_t* cpu);
 static inline void update_cpu_seq(cpu_t* cpu, cpu_sequence_t seq);
-
-static inline mimi_err_t cpu_read(cpu_t* cpu, address_t address);
-static inline mimi_err_t cpu_write(cpu_t* cpu, address_t address);
+static inline mimi_err_t cpu_read(cpu_t* cpu);
+static inline mimi_err_t cpu_write(cpu_t* cpu);
 
 static int tick_reset(cpu_t* cpu);
 static int tick_fetch(cpu_t* cpu);
 static int tick_execute(cpu_t* cpu);
+static int tick_interrupt(cpu_t* cpu);
 
 static int init(cpu_t** pcpu);
 static int destroy(cpu_t** pcpu);
@@ -33,6 +33,31 @@ const struct mimi_cpu_impl_s impl_6502 = {
 	.tick = tick,
 	.reset = NULL
 };
+
+mimi_err_t mimi_6502_cpu_read(cpu_t* cpu)
+{
+	mimi_bus_request_t req = {
+		.access = MIMI_BUS_READ,
+		.address = (mimi_address_t)((((address_t)cpu->addr_hi << 8) & 0x00FF00) | cpu->addr_lo),
+		.data.read = &cpu->data,
+		.size = sizeof(uint8_t)
+	};
+	
+	cpu->bus_rw = 0;
+	return mimi_bus_access(cpu->bus, &req);
+}
+
+mimi_err_t mimi_6502_cpu_write(cpu_t* cpu){
+	mimi_bus_request_t req = {
+		.access = MIMI_BUS_WRITE,
+		.address = (mimi_address_t)((((address_t)cpu->addr_hi << 8) & 0x00FF00) | cpu->addr_lo),
+		.data.write = &cpu->data,
+		.size = sizeof(uint8_t)
+	};
+
+	cpu->bus_rw = 1;
+	return mimi_bus_access(cpu->bus, &req);
+}
 
 static int init(cpu_t** pcpu)
 {
@@ -95,6 +120,33 @@ static int tick(cpu_t* cpu)
 	if (!cpu)
 		return MIMI_6502_ERR_UNACC_DATA;
 
+	{
+		printf("#%llu AB:%02X%02X D:%02X R/W:%u PC:%04X A:%02X X:%02X Y:%02X SP:%02X P:%02X IR:%02X ",
+			(unsigned long long)cpu->cycles,
+			(unsigned int)cpu->addr_hi,
+			(unsigned int)cpu->addr_lo,
+			(unsigned int)cpu->data,
+			(unsigned int)cpu->bus_rw,
+			(unsigned int)cpu->PC,
+			(unsigned int)cpu->A,
+			(unsigned int)cpu->X,
+			(unsigned int)cpu->Y,
+			(unsigned int)cpu->SP,
+			(unsigned int)cpu->P,
+			(unsigned int)cpu->IR);
+
+		if (cpu->bus_rw)
+			printf("READ $%04X = $%02X",
+				(unsigned int)(((address_t)cpu->addr_hi << 8) | cpu->addr_lo),
+				(unsigned int)cpu->data);
+		else
+			printf("WRITE $%04X = $%02X",
+				(unsigned int)(((address_t)cpu->addr_hi << 8) | cpu->addr_lo),
+				(unsigned int)cpu->data);
+
+		printf("\n");
+	}
+
 	int ret;
 	switch (cpu->cur_seq) {
 		case CPU_SEQ_RESET:
@@ -117,7 +169,7 @@ static int tick(cpu_t* cpu)
 
 		case CPU_SEQ_INTERRUPT:
 		{
-			ret = MIMI_6502_ERR_GENERIC;
+			ret = tick_interrupt(cpu);
 			break;
 		}
 
@@ -129,32 +181,6 @@ static int tick(cpu_t* cpu)
 	}
 
 	cpu->cycles++;
-
-	{
-		printf("6502 State:\n");
-		printf("  PC:     $%04X\n", (unsigned int)cpu->PC);
-		printf("  IR:     $%02X\n", (unsigned int)cpu->IR);
-		printf("  SP:     $%02X\n", (unsigned int)cpu->SP);
-		printf("  A:      $%02X\n", (unsigned int)cpu->A);
-		printf("  X:      $%02X\n", (unsigned int)cpu->X);
-		printf("  Y:      $%02X\n", (unsigned int)cpu->Y);
-		printf("  P:      $%02X\n", (unsigned int)cpu->P);
-		printf("   N=%u ", (unsigned int)cpu->flags.N);
-		printf("V=%u ", (unsigned int)cpu->flags.V);
-		printf("B=%u ", (unsigned int)cpu->flags.B);
-		printf("D=%u ", (unsigned int)cpu->flags.D);
-		printf("I=%u ", (unsigned int)cpu->flags.I);
-		printf("Z=%u ", (unsigned int)cpu->flags.Z);
-		printf("C=%u\n", (unsigned int)cpu->flags.C);
-
-		printf("  Mode:   %d\n", cpu->mode);
-		printf("  Seq:    %d\n", cpu->cur_seq);
-		printf("  Cycle:  %u\n", (unsigned int)cpu->cycle);
-		printf("  IRQ:    %u\n", (unsigned int)cpu->irq_pending);
-		printf("  NMI:    %u\n", (unsigned int)cpu->nmi_pending);
-		printf("  Cycles: %llu\n", (unsigned long long)cpu->cycles);
-	}
-
 	return ret;
 }
 
@@ -162,76 +188,82 @@ static int tick_reset(cpu_t* cpu)
 {
 	if (!cpu)
 		return MIMI_6502_ERR_UNACC_DATA;
-	
-	switch (cpu->cycle)
+
+	switch (cpu->seq_cycle)
 	{
-		case 0:
-		case 1:
-		case 2:
-		{
-			mimi_err_t err = cpu_read(cpu, MIMI_6502_RESET_DUMMY_ADDRESS);
+	case 0:
+	case 1:
+	case 2:
+	{
+		cpu->addr_lo = (register_t)((address_t)MIMI_6502_RESET_DUMMY_ADDRESS & 0x00FF);
+		cpu->addr_hi = (register_t)(((address_t)MIMI_6502_RESET_DUMMY_ADDRESS >> 8) & 0x00FF);
 
-			if (err == MIMI_OK) {
-				cpu->cycle++;
-				return MIMI_6502_OK;
-			}
-			
+		mimi_err_t err = cpu_read(cpu);
+
+		if (err == MIMI_OK) {
+			cpu->seq_cycle++;
+			return MIMI_6502_OK;
+		}
+
+		return MIMI_ERR_BUS_DEV;
+	}
+
+	case 3:
+	case 4:
+	case 5:
+	{
+		address_t stack_addr = get_stack_address(cpu);
+
+		cpu->addr_lo = (register_t)((address_t)stack_addr & 0x00FF);
+		cpu->addr_hi = (register_t)(((address_t)stack_addr >> 8) & 0x00FF);
+
+		mimi_err_t err = cpu_read(cpu);
+
+		if (err == MIMI_OK) {
+			cpu->SP--;
+			cpu->seq_cycle++;
+			return MIMI_6502_OK;
+		}
+
+		return MIMI_ERR_BUS_DEV;
+	}
+
+	case 6:
+	{
+		cpu->addr_lo = (register_t)((address_t)MIMI_6502_RESET_VECTOR_LO & 0x00FF);
+		cpu->addr_hi = (register_t)(((address_t)MIMI_6502_RESET_VECTOR_LO >> 8) & 0x00FF);
+
+		mimi_err_t err = cpu_read(cpu);
+
+		if (err != MIMI_OK)
 			return MIMI_ERR_BUS_DEV;
-			break;
-		}
 
-		case 3:
-		case 4:
-		case 5:
-		{
-			address_t addr = get_stack_address(cpu);
+		cpu->PC = (cpu->PC & 0x00FF00) | cpu->data;
+		cpu->flags.I = 1;
+		cpu->seq_cycle++;
 
-			mimi_err_t err = cpu_read(cpu, addr);
+		return MIMI_6502_OK;
+	}
 
-			if (err == MIMI_OK) {
-				cpu->SP--;
-				cpu->cycle++;
-				return MIMI_6502_OK;
-			}
+	case 7:
+	{
+		cpu->addr_lo = (register_t)((address_t)MIMI_6502_RESET_VECTOR_HI & 0x00FF);
+		cpu->addr_hi = (register_t)(((address_t)MIMI_6502_RESET_VECTOR_HI >> 8) & 0x00FF);
 
+		mimi_err_t err = cpu_read(cpu);
+
+		if (err != MIMI_OK)
 			return MIMI_ERR_BUS_DEV;
-			break;
-		}
 
-		case 6:
-		{
-			mimi_err_t err = cpu_read(cpu, MIMI_6502_RESET_VECTOR_LO);
+		cpu->PC = (cpu->PC & 0x00FF) | ((address_t)cpu->data << 8);
 
-			if (err == MIMI_OK) {
-				cpu->PC = ((cpu->PC & 0xFF00) | cpu->data);
-				cpu->flags.I = 1;
-				cpu->cycle++;
-				return MIMI_6502_OK;
-			}
+		update_cpu_seq(cpu, CPU_SEQ_FETCH);
 
-			return MIMI_ERR_BUS_DEV;
-			break;
-		}
+		return MIMI_6502_OK;
+	}
 
-		case 7:
-		{
-			mimi_err_t err = cpu_read(cpu, MIMI_6502_RESET_VECTOR_HI);
-
-			if (err == MIMI_OK) {
-				cpu->PC |= ((address_t)(cpu->data << 8) & 0xFF00);
-				update_cpu_seq(cpu, CPU_SEQ_FETCH);
-				return MIMI_6502_OK;
-			}
-			
-			return MIMI_ERR_BUS_DEV;
-			break;
-		}
-
-		default:
-		{
-			return MIMI_6502_ERR_TICK;
-			break;
-		}
+	default:
+		return MIMI_6502_ERR_TICK;
 	}
 
 	return MIMI_6502_ERR_TICK;
@@ -242,32 +274,32 @@ static int tick_fetch(cpu_t* cpu)
 	if (!cpu)
 		return MIMI_6502_ERR_UNACC_DATA;
 
-	switch (cpu->cycle)
+	switch (cpu->seq_cycle)
 	{
-		case 0:
+	case 0:
+	{
+		address_t addr = cpu->PC;
+
+		cpu->addr_lo = (register_t)((address_t)addr & 0x00FF);
+		cpu->addr_hi = (register_t)(((address_t)addr >> 8) & 0x00FF);
+
+		mimi_err_t err = cpu_read(cpu);
+
+		if (err == MIMI_OK)
 		{
-			address_t addr = cpu->PC;
+			cpu->IR = cpu->data;
+			cpu->PC++;
 
-			mimi_err_t err = cpu_read(cpu, addr);
+			update_cpu_seq(cpu, CPU_SEQ_EXECUTE);
 
-			if (err == MIMI_OK)
-			{
-				cpu->IR = cpu->data;
-				cpu->PC++;
-				cpu->cycle++;
-
-				update_cpu_seq(cpu, CPU_SEQ_EXECUTE);
-				return MIMI_6502_OK;
-			}
-
-			return MIMI_ERR_BUS_DEV;
-			break;
+			return MIMI_6502_OK;
 		}
-		default:
-		{
-			return MIMI_6502_ERR_TICK;
-			break;
-		}
+
+		return MIMI_ERR_BUS_DEV;
+	}
+
+	default:
+		return MIMI_6502_ERR_TICK;
 	}
 
 	return MIMI_6502_ERR_TICK;
@@ -279,15 +311,16 @@ static int tick_execute(cpu_t* cpu)
 		return MIMI_6502_ERR_UNACC_DATA;
 
 	const instruction_t* instr = lookup_opcode(cpu->IR);
+
 	if (!instr || !instr->handle)
 		return MIMI_6502_ERR_NOT_FOUND;
 
 	uint8_t instr_done = 1;
 	int err = instr->handle(cpu, &instr_done);
 
-	if (err != MIMI_6502_OK) 
+	if (err != MIMI_6502_OK)
 		return err;
-	
+
 	if (!instr_done)
 		return MIMI_6502_OK;
 
@@ -295,32 +328,24 @@ static int tick_execute(cpu_t* cpu)
 	cpu_sequence_t next_seq = int_pending ? CPU_SEQ_INTERRUPT : CPU_SEQ_FETCH;
 
 	update_cpu_seq(cpu, next_seq);
+
 	return MIMI_6502_OK;
 }
 
-static inline mimi_err_t cpu_read(cpu_t* cpu, address_t address)
+static int tick_interrupt(cpu_t* cpu)
 {
-	mimi_bus_request_t req = {
-		.access = MIMI_BUS_READ,
-		.address = (mimi_address_t)address,
-		.data.read = &cpu->data,
-		.size = sizeof(uint8_t)
-	};
-
-	return mimi_bus_access(cpu->bus, &req);
+	return MIMI_6502_ERR_GENERIC;
 }
 
-static inline mimi_err_t cpu_write(cpu_t* cpu, address_t address)
+static inline mimi_err_t cpu_read(cpu_t* cpu)
 {
-	mimi_bus_request_t req = {
-		.access = MIMI_BUS_WRITE,
-		.address = (mimi_address_t)address,
-		.data.write = &cpu->data,
-		.size = sizeof(uint8_t)
-	};
-
-	return mimi_bus_access(cpu->bus, &req);
+	return mimi_6502_cpu_read(cpu);
 }
+
+static inline mimi_err_t cpu_write(cpu_t* cpu){
+	return mimi_6502_cpu_write(cpu);
+}
+
 static inline address_t get_stack_address(cpu_t* cpu)
 {
 	return MIMI_6502_STACK_PAGE | cpu->SP;
@@ -336,6 +361,6 @@ static inline void update_cpu_seq(cpu_t* cpu, cpu_sequence_t seq)
 	};
 
 	cpu->cur_seq = seq;
-	cpu->cycle = 0;
+	cpu->seq_cycle = 0;
 	printf("Switched to %s.\n", seq_str[seq]);
 }
