@@ -168,10 +168,8 @@ static int tick_reset(cpu_t* cpu)
 		case 1:
 		case 2:
 		{
-			address_t addr = 0x00FF;
-
 			uint8_t dummy;
-			mimi_err_t err = cpu_read(cpu, 0x00FF, &dummy);
+			mimi_err_t err = cpu_read(cpu, MIMI_6502_RESET_DUMMY_ADDRESS, &dummy);
 
 			if (err == MIMI_OK) {
 				cpu->cycle++;
@@ -203,10 +201,8 @@ static int tick_reset(cpu_t* cpu)
 
 		case 6:
 		{
-			address_t addr = 0xFFFC;
-
 			uint8_t low_reset;
-			mimi_err_t err = cpu_read(cpu, addr, &low_reset);
+			mimi_err_t err = cpu_read(cpu, MIMI_6502_RESET_VECTOR_LO, &low_reset);
 
 			if (err == MIMI_OK) {
 				cpu->PC = ((cpu->PC & 0xFF00) | low_reset);
@@ -221,14 +217,11 @@ static int tick_reset(cpu_t* cpu)
 
 		case 7:
 		{
-			address_t addr = 0xFFFD;
-
 			uint8_t high_reset;
-			mimi_err_t err = cpu_read(cpu, addr, &high_reset);
+			mimi_err_t err = cpu_read(cpu, MIMI_6502_RESET_VECTOR_HI, &high_reset);
 
 			if (err == MIMI_OK) {
 				cpu->PC |= ((address_t)(high_reset << 8) & 0xFF00);
-				// cpu->flags.B = 1;
 				update_cpu_seq(cpu, CPU_SEQ_FETCH);
 				return MIMI_6502_OK;
 			}
@@ -299,8 +292,6 @@ static int tick_execute(cpu_t* cpu)
 	uint8_t instr_done = 1;
 	int err = instr->handle(cpu, &instr_done);
 
-	printf("returned 0x%x with %u.\n", err, instr_done);
-
 	if (err != MIMI_6502_OK) 
 		return err;
 	
@@ -340,7 +331,7 @@ static inline mimi_err_t cpu_write(cpu_t* cpu, address_t address, const uint8_t*
 
 static inline address_t get_stack_address(cpu_t* cpu)
 {
-	return 0x0100 - cpu->SP;
+	return MIMI_6502_STACK_PAGE | cpu->SP;
 }
 
 static inline void update_cpu_seq(cpu_t* cpu, cpu_sequence_t seq)

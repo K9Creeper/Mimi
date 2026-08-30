@@ -20,7 +20,7 @@ extern "C" {
 
 #define OPCODE_LIST(X)      \
 	X(a9, IMPLICIT_MODE)    \
-	X(da, IMPLICIT_MODE)    \
+	X(ea, IMPLICIT_MODE)    \
 
 #define OPCODE_TO_FN(op, ...) x##op
 

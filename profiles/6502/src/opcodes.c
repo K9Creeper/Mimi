@@ -58,7 +58,7 @@ DEFINE_OPCODE(a9)
     return MIMI_6502_ERR_TICK;
 }
 
-DEFINE_OPCODE(da)
+DEFINE_OPCODE(ea)
 {
 	if (!cpu || !done)
         return MIMI_6502_ERR_BAD_ARG;

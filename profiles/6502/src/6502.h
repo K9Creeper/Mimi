@@ -68,4 +68,17 @@ typedef struct cpu_s {
 	uint64_t cycles;
 } cpu_t;
 
+#define MIMI_6502_STACK_PAGE       ((address_t)0x0100)
+
+#define MIMI_6502_RESET_DUMMY_ADDRESS ((address_t)0x00FF)
+
+#define MIMI_6502_RESET_VECTOR_LO  ((address_t)0xFFFC)
+#define MIMI_6502_RESET_VECTOR_HI  ((address_t)0xFFFD)
+
+#define MIMI_6502_NMI_VECTOR       ((address_t)0xFFFA)
+#define MIMI_6502_NMI_VECTOR_HI    ((address_t)0xFFFB)
+
+#define MIMI_6502_IRQ_VECTOR       ((address_t)0xFFFE)
+#define MIMI_6502_IRQ_VECTOR_HI    ((address_t)0xFFFF)
+
 #endif
