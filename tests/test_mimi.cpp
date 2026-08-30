@@ -37,7 +37,7 @@ static const uint8_t reset_vector[] = {
 int main()
 {
 	mimi_cpu_t cpu = {};
-	mimi_bus_t addr_bus = {};
+	mimi_bus_t bus = {};
 
 	mimi_bus_device_t RAM = {};
 	mimi_bus_device_t ROM = {};
@@ -49,21 +49,21 @@ int main()
 	ret = mimi_cpu_init(&cpu, &impl_6502);
 	std::cout << "CPU init returned " << ret << std::endl;
 
-	ret = mimi_bus_init(&addr_bus);
+	ret = mimi_bus_init(&bus);
 	std::cout << "Bus init returned " << ret << std::endl;
 
 	// $0000-$7FFF
 	RAM.impl = &memory_bus_device_impl;
 	RAM.size = 0x8000;
 
-	ret = mimi_bus_map(&addr_bus, &RAM, 0x0000);
+	ret = mimi_bus_map(&bus, &RAM, 0x0000);
 	std::cout << "RAM map returned " << ret << std::endl;
 
 	// $8000-$FFFF
 	ROM.impl = &rom_bus_device_impl;
 	ROM.size = 0x8000;
 
-	ret = mimi_bus_map(&addr_bus, &ROM, 0x8000);
+	ret = mimi_bus_map(&bus, &ROM, 0x8000);
 	std::cout << "ROM map returned " << ret << std::endl;
 
 	// Load program at $8000.
@@ -91,8 +91,8 @@ int main()
 
 	ret = mimi_cpu_attach_bus(
 		&cpu,
-		&addr_bus,
-		MIMI_6502_BUS_ADDRESS
+		&bus,
+		MIMI_6502_BUS
 	);
 
 	std::cout << "CPU attach bus returned " << ret << std::endl;
@@ -107,7 +107,7 @@ int main()
 	}
 
 	mimi_cpu_destroy(&cpu);
-	mimi_bus_destroy(&addr_bus);
+	mimi_bus_destroy(&bus);
 
 	std::cin.get();
 

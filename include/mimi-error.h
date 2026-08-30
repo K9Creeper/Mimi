@@ -11,7 +11,7 @@ typedef enum mimi_err_e {
     MIMI_ERR_NOT_FOUND = -5,
     MIMI_ERR_UNSUPPORTED = -6,
     
-    MIMI_6502_ERR_UNACC_DATA = -100,
+    MIMI_ERR_CPU = -100,
     MIMI_ERR_BUS_DEV = -101,
 } mimi_err_t;
 

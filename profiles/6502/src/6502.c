@@ -75,9 +75,9 @@ static int attach_bus(cpu_t* cpu, mimi_bus_t* bus, mimi_bus_role_id_t role)
 		return MIMI_6502_ERR_BAD_ARG;
 
 	switch (role) {
-		case MIMI_6502_BUS_ADDRESS:
+		case MIMI_6502_BUS:
 		{
-			cpu->addr_bus = bus;
+			cpu->bus = bus;
 			break;
 		}
 
@@ -289,7 +289,7 @@ static inline mimi_err_t cpu_read(cpu_t* cpu, address_t address, uint8_t* data)
 		.size = sizeof(uint8_t)
 	};
 
-	return mimi_bus_access(cpu->addr_bus, &req);
+	return mimi_bus_access(cpu->bus, &req);
 }
 
 static inline mimi_err_t cpu_write(cpu_t* cpu, address_t address, const uint8_t* data)
@@ -301,7 +301,7 @@ static inline mimi_err_t cpu_write(cpu_t* cpu, address_t address, const uint8_t*
 		.size = sizeof(uint8_t)
 	};
 
-	return mimi_bus_access(cpu->addr_bus, &req);
+	return mimi_bus_access(cpu->bus, &req);
 }
 
 static inline address_t get_stack_address(cpu_t* cpu)

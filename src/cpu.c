@@ -19,7 +19,7 @@ mimi_err_t mimi_cpu_init(mimi_cpu_t* cpu, const struct mimi_cpu_impl_s* impl)
 	if (err == 0)
 		return MIMI_OK;
 
-	return (err > 0) ? MIMI_6502_ERR_UNACC_DATA : err;
+	return (err > 0) ? MIMI_ERR_CPU : err;
 }
 
 mimi_err_t mimi_cpu_destroy(mimi_cpu_t* cpu)
@@ -35,7 +35,7 @@ mimi_err_t mimi_cpu_destroy(mimi_cpu_t* cpu)
 	if (err == 0)
 		return MIMI_OK;
 
-	return (err > 0) ? MIMI_6502_ERR_UNACC_DATA : err;
+	return (err > 0) ? MIMI_ERR_CPU : err;
 }
 
 mimi_err_t mimi_cpu_attach_bus(mimi_cpu_t* cpu, mimi_bus_t* bus, mimi_bus_role_id_t role)
@@ -51,7 +51,7 @@ mimi_err_t mimi_cpu_attach_bus(mimi_cpu_t* cpu, mimi_bus_t* bus, mimi_bus_role_i
 	if (err == 0)
 		return MIMI_OK;
 
-	return (err > 0) ? MIMI_6502_ERR_UNACC_DATA : err;
+	return (err > 0) ? MIMI_ERR_CPU : err;
 }
 
 mimi_err_t mimi_cpu_tick(mimi_cpu_t* cpu)
@@ -67,5 +67,5 @@ mimi_err_t mimi_cpu_tick(mimi_cpu_t* cpu)
 	if (err == 0)
 		return MIMI_OK;
 
-	return (err > 0) ? MIMI_6502_ERR_UNACC_DATA : err;
+	return (err > 0) ? MIMI_ERR_CPU : err;
 }
