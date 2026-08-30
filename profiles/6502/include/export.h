@@ -4,6 +4,9 @@
 #include <cpu.h>
 #include <bus.h>
 
+#include <bus-dev/mem.h>
+#include <bus-dev/rom.h>
+
 #define MIMI_6502_ERR_UNACC_DATA	-1
 #define MIMI_6502_OK				0
 #define MIMI_6502_ERR_GENERIC		1

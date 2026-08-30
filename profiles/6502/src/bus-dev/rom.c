@@ -1,4 +1,4 @@
-#include <rom.h>
+#include <bus-dev/rom.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -13,7 +13,7 @@ static int destroy(struct rom_device_s** prom);
 static int read(struct rom_device_s* rom, mimi_address_t address, void* data, size_t size);
 static int write(struct rom_device_s* rom, mimi_address_t address, const void* data, size_t size);
 
-const struct mimi_bus_device_impl_s rom_bus_device_impl = {
+const struct mimi_bus_device_impl_s rom_6502_bus_device_impl = {
 	.init = init,
 	.destroy = destroy,
 	.read = read,

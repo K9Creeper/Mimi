@@ -1,4 +1,4 @@
-#include <mem.h>
+#include <bus-dev/mem.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -13,7 +13,7 @@ static int destroy(struct mem_device_s** pmem);
 static int read(struct mem_device_s* mem, mimi_address_t address, void* data, size_t size);
 static int write(struct mem_device_s* mem, mimi_address_t address, const void* data, size_t size);
 
-const struct mimi_bus_device_impl_s memory_bus_device_impl = {
+const struct mimi_bus_device_impl_s memory_6502_bus_device_impl = {
 	.init = init,
 	.destroy = destroy,
 	.read = read,

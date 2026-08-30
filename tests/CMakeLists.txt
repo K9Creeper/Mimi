@@ -5,8 +5,7 @@ add_executable(MimiTests
 target_link_libraries(MimiTests
     PRIVATE
         Mimi
-        cpu_${TARGET_PROFILE} 
-        bus_dev
+        ${TARGET_PROFILE} 
 )
 
 add_test(

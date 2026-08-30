@@ -15,6 +15,5 @@ set(TARGET_PROFILE 6502 CACHE STRING "Target CPU profile")
 
 add_subdirectory(src)
 add_subdirectory(profiles/${TARGET_PROFILE})
-add_subdirectory(bus-devices)
 
 add_subdirectory(tests)

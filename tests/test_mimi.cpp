@@ -3,9 +3,6 @@
 
 #include <mimi.h>
 
-#include "../bus-devices/mem/include/mem.h"
-#include "../bus-devices/rom/include/rom.h"
-
 #include "../profiles/6502/include/export.h"
 
 // Program at $8000:
@@ -53,14 +50,14 @@ int main()
 	std::cout << "Bus init returned " << ret << std::endl;
 
 	// $0000-$7FFF
-	RAM.impl = &memory_bus_device_impl;
+	RAM.impl = &memory_6502_bus_device_impl;
 	RAM.size = 0x8000;
 
 	ret = mimi_bus_map(&bus, &RAM, 0x0000);
 	std::cout << "RAM map returned " << ret << std::endl;
 
 	// $8000-$FFFF
-	ROM.impl = &rom_bus_device_impl;
+	ROM.impl = &rom_6502_bus_device_impl;
 	ROM.size = 0x8000;
 
 	ret = mimi_bus_map(&bus, &ROM, 0x8000);
