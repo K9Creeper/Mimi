@@ -1,9 +1,10 @@
-#include <bus-dev/rom.h>
+#include <rom.h>
 
 #include <stdlib.h>
 #include <string.h>
 
 struct rom_device_s {
+	int err;
 	uint8_t* raw_data;
 };
 
@@ -19,37 +20,40 @@ const struct mimi_bus_device_impl_s rom_bus_device_impl = {
 	.write = write
 };
 
-int mimi_rom_bus_device_special_write(void* private_data, mimi_address_t address, const void* data, size_t size)
+mimi_err_t mimi_rom_bus_device_special_write(void* private_data, mimi_address_t address, const void* data, size_t size)
 {
 	if (!private_data || !data)
-		return -1;
+		return MIMI_ERR_BAD_ARG;
 
 	struct rom_device_s* rom = private_data;
 
 	if (!rom->raw_data)
-		return -1;
+		return MIMI_ERR_GENERIC;
 
 	uint8_t* raw_dst = (uint8_t*)rom->raw_data + address;
 	memcpy(raw_dst, data, size);
 
-	return 0;
+	return MIMI_OK;
 }
 
 static int init(struct rom_device_s** prom, mimi_address_t size)
 {
-	if (!prom || *prom)
+	if (!prom)
 		return -1;
+
+	if (*prom)
+		return 1;
 
 	struct rom_device_s* rom = malloc(sizeof(struct rom_device_s));
 	if (!rom)
-		return -2;
+		return 2;
 
 	memset(rom, 0, sizeof(struct rom_device_s));
 
 	uint8_t* raw_data = malloc(size);
 	if (!raw_data) {
 		free(rom);
-		return -2;
+		return 2;
 	}
 
 	memset(raw_data, 0, size);
@@ -80,11 +84,14 @@ static int destroy(struct rom_device_s** prom)
 
 static int read(struct rom_device_s* rom, mimi_address_t address, void* data, size_t size)
 {
-	if (!rom || !data)
+	if (!rom)
 		return -1;
 
+	if(!data)
+		return 1;
+
 	if (!rom->raw_data)
-		return -1;
+		return 2;
 
 	uint8_t* raw_src = (uint8_t*)rom->raw_data + address;
 	memcpy(data, raw_src, size);
@@ -94,5 +101,5 @@ static int read(struct rom_device_s* rom, mimi_address_t address, void* data, si
 
 static int write(struct rom_device_s* rom, mimi_address_t address, const void* data, size_t size)
 {
-	return 1;
+	return -1;
 }

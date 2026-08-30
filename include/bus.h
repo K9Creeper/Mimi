@@ -55,15 +55,15 @@ typedef struct mimi_bus_s {
 extern "C" {
 #endif
 
-	extern int mimi_bus_init(mimi_bus_t* bus);
+	extern mimi_err_t mimi_bus_init(mimi_bus_t* bus);
 
-	extern int mimi_bus_destroy(mimi_bus_t* bus);
+	extern mimi_err_t mimi_bus_destroy(mimi_bus_t* bus);
 
-	extern int mimi_bus_map(mimi_bus_t* bus,mimi_bus_device_t* device,mimi_address_t address);
+	extern mimi_err_t mimi_bus_map(mimi_bus_t* bus,mimi_bus_device_t* device,mimi_address_t address);
 
-	extern int mimi_bus_unmap(mimi_bus_t* bus,mimi_bus_device_t* device);
+	extern mimi_err_t mimi_bus_unmap(mimi_bus_t* bus,mimi_bus_device_t* device);
 	
-	extern int mimi_bus_access(mimi_bus_t* bus,const mimi_bus_request_t* request);
+	extern mimi_err_t mimi_bus_access(mimi_bus_t* bus,const mimi_bus_request_t* request);
 	
 #ifdef __cplusplus
 }

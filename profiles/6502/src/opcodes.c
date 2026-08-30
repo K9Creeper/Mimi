@@ -20,11 +20,11 @@ DEFINE_OPCODE(a9)
 {
     printf("Executing LDA #. ");
     printf("FAILING PURPOSEFULLY.\n");
-    return 1;
+    return MIMI_6502_ERR_GENERIC;
 }
 
 DEFINE_OPCODE(da)
 {
     printf("Executing NOP.\n");
-    return 0;
+    return MIMI_6502_OK;
 }

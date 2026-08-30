@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#include <mimi-error.h>
+
 typedef uintptr_t mimi_address_t;
 
 #ifdef __cplusplus

@@ -3,8 +3,8 @@
 
 #include <mimi.h>
 
-#include <bus-dev/mem.h>
-#include <bus-dev/rom.h>
+#include "../bus-devices/mem/include/mem.h"
+#include "../bus-devices/rom/include/rom.h"
 
 #include "../profiles/6502/include/export.h"
 

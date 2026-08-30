@@ -1,6 +1,8 @@
 #ifndef CPU_H
 #define CPU_H
 
+#include <mimi.h>
+
 #include <bus.h>
 
 struct mimi_cpu_impl_s {
@@ -24,13 +26,13 @@ typedef struct mimi_cpu_s {
 extern "C" {
 #endif
 
-	extern int mimi_cpu_init(mimi_cpu_t* cpu, const struct mimi_cpu_impl_s* impl);
+	extern mimi_err_t mimi_cpu_init(mimi_cpu_t* cpu, const struct mimi_cpu_impl_s* impl);
 
-	extern int mimi_cpu_destroy(mimi_cpu_t* cpu);
+	extern mimi_err_t mimi_cpu_destroy(mimi_cpu_t* cpu);
 	
-	extern int mimi_cpu_attach_bus(mimi_cpu_t* cpu, mimi_bus_t* bus, mimi_bus_role_id_t role);
+	extern mimi_err_t mimi_cpu_attach_bus(mimi_cpu_t* cpu, mimi_bus_t* bus, mimi_bus_role_id_t role);
 
-	extern int mimi_cpu_tick(mimi_cpu_t* cpu);
+	extern mimi_err_t mimi_cpu_tick(mimi_cpu_t* cpu);
 
 #ifdef __cplusplus
 }

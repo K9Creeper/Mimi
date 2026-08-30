@@ -14,8 +14,8 @@
 static inline address_t get_stack_address(cpu_t* cpu);
 static inline void update_cpu_seq(cpu_t* cpu, cpu_sequence_t seq);
 
-static inline int cpu_read(cpu_t* cpu, address_t address, uint8_t* data);
-static inline int cpu_write(cpu_t* cpu, address_t address, const uint8_t* data);
+static inline mimi_err_t cpu_read(cpu_t* cpu, address_t address, uint8_t* data);
+static inline mimi_err_t cpu_write(cpu_t* cpu, address_t address, const uint8_t* data);
 
 static int tick_reset(cpu_t* cpu);
 static int tick_fetch(cpu_t* cpu);
@@ -36,58 +36,64 @@ const struct mimi_cpu_impl_s impl_6502 = {
 
 static int init(cpu_t** pcpu)
 {
-	if (!pcpu || *pcpu)
-		return -1;
+	if (!pcpu)
+		return MIMI_6502_ERR_UNACC_DATA;
+
+	if (*pcpu)
+		return MIMI_6502_ERR_BAD_ARG;
 
 	cpu_t* cpu = malloc(sizeof(cpu_t));
 	if (!cpu)
-		return -2;
+		return MIMI_6502_ERR_UNACC_DATA;
 
 	memset(cpu, 0, sizeof(cpu_t));
 
 	*pcpu = (void*)cpu;
-	return 0;
+	return MIMI_6502_OK;
 }
 
 static int destroy(cpu_t** pcpu)
 {
 	if (!pcpu)
-		return -1;
+		return MIMI_6502_ERR_UNACC_DATA;
 
 	cpu_t* cpu = *pcpu;
 	if (!cpu)
-		return -1;
+		return MIMI_6502_ERR_UNACC_DATA;
 
 	free(cpu);
 
-	return 0;
+	return MIMI_6502_OK;
 }
 
 static int attach_bus(cpu_t* cpu, mimi_bus_t* bus, mimi_bus_role_id_t role)
 {
-	if (!cpu || !bus)
-		return -1;
+	if (!cpu)
+		return MIMI_6502_ERR_UNACC_DATA;
+
+	if (!bus)
+		return MIMI_6502_ERR_BAD_ARG;
 
 	switch (role) {
-	case MIMI_6502_BUS_ADDRESS:
-	{
-		cpu->addr_bus = bus;
-		break;
+		case MIMI_6502_BUS_ADDRESS:
+		{
+			cpu->addr_bus = bus;
+			break;
+		}
+
+		default: {
+			return MIMI_6502_ERR_NOT_FOUND;
+			break;
+		}
 	}
 
-	default: {
-		return 1;
-		break;
-	}
-	}
-
-	return 0;
+	return MIMI_6502_OK;
 }
 
 static int tick(cpu_t* cpu)
 {
 	if (!cpu)
-		return -1;
+		return MIMI_6502_ERR_UNACC_DATA;
 
 	int ret;
 	switch (cpu->cur_seq) {
@@ -111,13 +117,13 @@ static int tick(cpu_t* cpu)
 
 		case CPU_SEQ_INTERRUPT:
 		{
-			ret = 1;
+			ret = MIMI_6502_ERR_GENERIC;
 			break;
 		}
 
 		default:
 		{
-			ret = -1;
+			ret = MIMI_6502_ERR_NOT_FOUND;
 			break;
 		}
 	}
@@ -129,9 +135,8 @@ static int tick(cpu_t* cpu)
 static int tick_reset(cpu_t* cpu)
 {
 	if (!cpu)
-		return -1;
+		return MIMI_6502_ERR_UNACC_DATA;
 
-	int ret;
 	switch (cpu->cycle)
 	{
 		case 0:
@@ -141,11 +146,14 @@ static int tick_reset(cpu_t* cpu)
 			address_t addr = 0x00FF;
 
 			uint8_t dummy;
-			ret = cpu_read(cpu, 0x00FF, &dummy);
+			mimi_err_t err = cpu_read(cpu, 0x00FF, &dummy);
 
-			if (!ret) {
+			if (err == MIMI_OK) {
 				cpu->cycle++;
+				return MIMI_6502_OK;
 			}
+			
+			return MIMI_ERR_BUS_DEV;
 			break;
 		}
 
@@ -156,27 +164,33 @@ static int tick_reset(cpu_t* cpu)
 			address_t addr = get_stack_address(cpu);
 
 			uint8_t dummy;
-			ret = cpu_read(cpu, addr, &dummy);
+			mimi_err_t err = cpu_read(cpu, addr, &dummy);
 
-			if (!ret) {
+			if (err == MIMI_OK) {
 				cpu->SP--;
 				cpu->cycle++;
+				return MIMI_6502_OK;
 			}
+
+			return MIMI_ERR_BUS_DEV;
 			break;
 		}
-		
+
 		case 6:
 		{
 			address_t addr = 0xFFFC;
 
 			uint8_t low_reset;
-			ret = cpu_read(cpu, addr, &low_reset);
+			mimi_err_t err = cpu_read(cpu, addr, &low_reset);
 
-			if (!ret) {
+			if (err == MIMI_OK) {
 				cpu->PC = ((cpu->PC & 0xFF00) | low_reset);
 				cpu->flags.I = 1;
 				cpu->cycle++;
+				return MIMI_6502_OK;
 			}
+
+			return MIMI_ERR_BUS_DEV;
 			break;
 		}
 
@@ -185,32 +199,34 @@ static int tick_reset(cpu_t* cpu)
 			address_t addr = 0xFFFD;
 
 			uint8_t high_reset;
-			ret = cpu_read(cpu, addr, &high_reset);
-			
-			if (!ret) {
+			mimi_err_t err = cpu_read(cpu, addr, &high_reset);
+
+			if (err == MIMI_OK) {
 				cpu->PC |= ((address_t)(high_reset << 8) & 0xFF00);
 				// cpu->flags.B = 1;
 				update_cpu_seq(cpu, CPU_SEQ_FETCH);
+				return MIMI_6502_OK;
 			}
+			
+			return MIMI_ERR_BUS_DEV;
 			break;
 		}
 
 		default:
 		{
-			ret = -1;
+			return MIMI_6502_ERR_TICK;
 			break;
 		}
 	}
 
-	return ret;
+	return MIMI_6502_ERR_TICK;
 }
 
 static int tick_fetch(cpu_t* cpu)
 {
 	if (!cpu)
-		return -1;
-	
-	int ret;
+		return MIMI_6502_ERR_UNACC_DATA;
+
 	switch (cpu->cycle)
 	{
 		case 0:
@@ -218,49 +234,53 @@ static int tick_fetch(cpu_t* cpu)
 			address_t addr = cpu->PC;
 
 			uint8_t instruction;
-			ret = cpu_read(cpu, addr, &instruction);
-			if (!ret)
+			mimi_err_t err = cpu_read(cpu, addr, &instruction);
+
+			if (err == MIMI_OK)
 			{
 				cpu->IR = instruction;
 				cpu->PC++;
 
 				update_cpu_seq(cpu, CPU_SEQ_EXECUTE);
+				return MIMI_6502_OK;
 			}
+
+			return MIMI_ERR_BUS_DEV;
 			break;
 		}
 		default:
 		{
-			ret = -1;
+			return MIMI_6502_ERR_TICK;
 			break;
 		}
 	}
 
-	return ret;
+	return MIMI_6502_ERR_TICK;
 }
 
 static int tick_execute(cpu_t* cpu)
 {
 	if (!cpu)
-		return -1;
+		return MIMI_6502_ERR_UNACC_DATA;
 
 	const instruction_t* instr = lookup_opcode(cpu->IR);
 	if (!instr || instr->mode != cpu->mode)
-		return 1;
-	
-	if (!instr->handle)
-		return 2;
+		return MIMI_6502_ERR_NOT_FOUND;
 
-	int ret = instr->handle(cpu);
-	if (ret) return 3;
-	
+	if (!instr->handle)
+		return MIMI_6502_ERR_GENERIC;
+
+	int err = instr->handle(cpu);
+	if (err != MIMI_6502_OK) return err;
+
 	uint8_t int_pending = (cpu->nmi_pending || (cpu->irq_pending && cpu->flags.I));
 	cpu_sequence_t next_seq = int_pending ? CPU_SEQ_INTERRUPT : CPU_SEQ_FETCH;
-	
+
 	update_cpu_seq(cpu, next_seq);
-	return 0;
+	return MIMI_6502_OK;
 }
 
-static inline int cpu_read(cpu_t* cpu, address_t address, uint8_t* data)
+static inline mimi_err_t cpu_read(cpu_t* cpu, address_t address, uint8_t* data)
 {
 	mimi_bus_request_t req = {
 		.access = MIMI_BUS_READ,
@@ -269,10 +289,10 @@ static inline int cpu_read(cpu_t* cpu, address_t address, uint8_t* data)
 		.size = sizeof(uint8_t)
 	};
 
-	return 	mimi_bus_access(cpu->addr_bus, &req);
+	return mimi_bus_access(cpu->addr_bus, &req);
 }
 
-static inline int cpu_write(cpu_t* cpu, address_t address, const uint8_t* data)
+static inline mimi_err_t cpu_write(cpu_t* cpu, address_t address, const uint8_t* data)
 {
 	mimi_bus_request_t req = {
 		.access = MIMI_BUS_WRITE,
@@ -281,7 +301,7 @@ static inline int cpu_write(cpu_t* cpu, address_t address, const uint8_t* data)
 		.size = sizeof(uint8_t)
 	};
 
-	return 	mimi_bus_access(cpu->addr_bus, &req);
+	return mimi_bus_access(cpu->addr_bus, &req);
 }
 
 static inline address_t get_stack_address(cpu_t* cpu)

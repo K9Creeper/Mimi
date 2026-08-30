@@ -9,61 +9,62 @@ static struct mimi_bus_device_node_s* device_insert(struct mimi_bus_device_node_
 static int device_remove(mimi_bus_t* bus, mimi_bus_device_t* device);
 static void device_destroy_tree(struct mimi_bus_device_node_s* root);
 
-int mimi_bus_init(mimi_bus_t* bus)
+mimi_err_t mimi_bus_init(mimi_bus_t* bus)
 {
 	if (!bus)
-		return -1;
+		return MIMI_ERR_BAD_ARG;
 
-	memset(bus, 0, sizeof(*bus));
+	memset(bus, 0, sizeof(mimi_bus_t));
 
-	return 0;
+	return MIMI_OK;
 }
 
-int mimi_bus_destroy(mimi_bus_t* bus)
+mimi_err_t mimi_bus_destroy(mimi_bus_t* bus)
 {
 	if (!bus)
-		return -1;
+		return MIMI_ERR_BAD_ARG;
 
 	device_destroy_tree(bus->root);
 
-	memset(bus, 0, sizeof(*bus));
+	memset(bus, 0, sizeof(mimi_bus_t));
 
-	return 0;
+	return MIMI_OK;
 }
 
-int mimi_bus_map(mimi_bus_t* bus, mimi_bus_device_t* device, mimi_address_t address)
+mimi_err_t mimi_bus_map(mimi_bus_t* bus, mimi_bus_device_t* device, mimi_address_t address)
 {
-	if (!bus || !device || !device->impl)
-		return -1;
+	if (!bus || !device)
+		return MIMI_ERR_BAD_ARG;
+
+	if (!device->impl)
+		return MIMI_ERR_UNSUPPORTED;
 
 	if (!device->size)
-		return -1;
+		return MIMI_ERR_GENERIC;
 
 	if (address > UINTPTR_MAX - device->size)
-		return -1;
+		return MIMI_ERR_BAD_ARG;
 
 	if (device->is_mapped)
-		return -1;
+		return MIMI_ERR_GENERIC;
 
 	mimi_address_t end = address + device->size;
 
 	if (device_overlaps(bus->root, address, end))
-		return -3;
+		return MIMI_ERR_GENERIC;
 
 	if (!device->impl->init)
-		return -1;
+		return MIMI_ERR_UNSUPPORTED;
 
 	struct mimi_bus_device_node_s* node = malloc(sizeof(*node));
 
 	if (!node)
-		return -2;
+		return MIMI_ERR_NO_MEMORY;
 
-	if (device->impl->init(
-		&device->private_data,
-		device->size
-	)) {
+	int err = device->impl->init(&device->private_data, device->size);
+	if (err) {
 		free(node);
-		return -4;
+		return (err < 0) ? MIMI_ERR_BUS_DEV : err;
 	}
 
 	device->base = address;
@@ -75,21 +76,19 @@ int mimi_bus_map(mimi_bus_t* bus, mimi_bus_device_t* device, mimi_address_t addr
 
 	bus->root = device_insert(bus->root, node);
 
-	return 0;
+	return MIMI_OK;
 }
 
-int mimi_bus_unmap(mimi_bus_t* bus, mimi_bus_device_t* device)
+mimi_err_t mimi_bus_unmap(mimi_bus_t* bus, mimi_bus_device_t* device)
 {
 	if (!bus || !device)
-		return -1;
+		return MIMI_OK;
 
 	if (!device->is_mapped)
-		return -1;
+		return MIMI_ERR_GENERIC;
 
-	int ret = device_remove(bus, device);
-
-	if (ret)
-		return ret;
+	if (device_remove(bus, device))
+		return MIMI_ERR_GENERIC;
 
 	if (device->impl && device->impl->destroy) {
 		device->impl->destroy(&device->private_data);
@@ -98,13 +97,13 @@ int mimi_bus_unmap(mimi_bus_t* bus, mimi_bus_device_t* device)
 	device->base = 0;
 	device->is_mapped = 0;
 
-	return 0;
+	return MIMI_OK;
 }
 
-int mimi_bus_access(mimi_bus_t* bus, const mimi_bus_request_t* request)
+mimi_err_t mimi_bus_access(mimi_bus_t* bus, const mimi_bus_request_t* request)
 {
 	if (!bus || !request)
-		return -1;
+		return MIMI_OK;
 
 	struct mimi_bus_device_node_s* node = bus->root;
 	mimi_bus_device_t* device = NULL;
@@ -120,43 +119,48 @@ int mimi_bus_access(mimi_bus_t* bus, const mimi_bus_request_t* request)
 	}
 
 	if (!device)
-		return 1;
+		return MIMI_ERR_NOT_FOUND;
 
-	mimi_address_t offset =
-		request->address - device->base;
+	mimi_address_t offset =	request->address - device->base;
 
 	if (offset >= device->size)
-		return 1;
+		return MIMI_ERR_GENERIC;
 
 	if (request->size > device->size - offset)
-		return 1;
+		return MIMI_ERR_GENERIC;
 
 	switch (request->access) {
-	case MIMI_BUS_READ:
-		if (!device->impl->read)
-			return -1;
+		case MIMI_BUS_READ:
+		{
+			if (!device->impl->read)
+				return MIMI_ERR_UNSUPPORTED;
 
-		return device->impl->read(
-			device->private_data,
-			offset,
-			request->data.read,
-			request->size
-		);
+			int err = device->impl->read(device->private_data, offset, request->data.read, request->size);
+			if (err) {
+				return (err < 0) ? MIMI_ERR_BUS_DEV : err;
+			}
 
-	case MIMI_BUS_WRITE:
-		if (!device->impl->write)
-			return -1;
+			return MIMI_OK;
+			break;
+		}
+		case MIMI_BUS_WRITE:
+		{
+			if (!device->impl->write)
+				return MIMI_ERR_UNSUPPORTED;
 
-		return device->impl->write(
-			device->private_data,
-			offset,
-			request->data.write,
-			request->size
-		);
+			int err = device->impl->write(device->private_data, offset, request->data.write, request->size);
+			if (err) {
+				return (err < 0) ? MIMI_ERR_BUS_DEV : err;
+			}
 
-	default:
-		return -1;
+			return MIMI_OK;
+			break;
+		}
+		default:
+			return MIMI_ERR_BAD_ARG;
 	}
+
+	return MIMI_ERR_GENERIC;
 }
 
 static int device_overlaps(struct mimi_bus_device_node_s* root, mimi_address_t base, mimi_address_t end)

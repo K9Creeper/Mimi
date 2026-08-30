@@ -1,5 +1,5 @@
-#ifndef BUS_DEV_MEM_H
-#define BUS_DEV_MEM_H
+#ifndef MEM_H
+#define MEM_H
 
 #include <bus.h>
 

@@ -2,50 +2,70 @@
 
 #include <string.h>
 
-int mimi_cpu_init(mimi_cpu_t* cpu, const struct mimi_cpu_impl_s* impl)
+mimi_err_t mimi_cpu_init(mimi_cpu_t* cpu, const struct mimi_cpu_impl_s* impl)
 {
 	if (!cpu || !impl)
-		return -1;
+		return MIMI_ERR_BAD_ARG;
 
 	memset(cpu, 0, sizeof(mimi_cpu_t));
 
 	cpu->impl = impl;
 
 	if (!cpu->impl->init)
-		return -1;
+		return MIMI_ERR_UNSUPPORTED;
 
-	return cpu->impl->init(&cpu->private_data);
+	int err = cpu->impl->init(&cpu->private_data);
+
+	if (err == 0)
+		return MIMI_OK;
+
+	return (err > 0) ? MIMI_6502_ERR_UNACC_DATA : err;
 }
 
-int mimi_cpu_destroy(mimi_cpu_t* cpu)
+mimi_err_t mimi_cpu_destroy(mimi_cpu_t* cpu)
 {
-	if (!cpu || !cpu->impl)
-		return -1;
+	if (!cpu)
+		return MIMI_ERR_BAD_ARG;
 
-	if (!cpu->impl->destroy)
-		return -1;
+	if (!cpu->impl || !cpu->impl->destroy)
+		return MIMI_ERR_UNSUPPORTED;
 
-	return cpu->impl->destroy(&cpu->private_data);
+	int err = cpu->impl->destroy(&cpu->private_data);
+
+	if (err == 0)
+		return MIMI_OK;
+
+	return (err > 0) ? MIMI_6502_ERR_UNACC_DATA : err;
 }
 
-int mimi_cpu_attach_bus(mimi_cpu_t* cpu, mimi_bus_t* bus, mimi_bus_role_id_t role)
+mimi_err_t mimi_cpu_attach_bus(mimi_cpu_t* cpu, mimi_bus_t* bus, mimi_bus_role_id_t role)
 {
-	if (!cpu || !cpu->impl)
-		return -1;
+	if (!cpu)
+		return MIMI_ERR_BAD_ARG;
 
-	if (!cpu->impl->attach_bus)
-		return -1;
+	if (!cpu->impl || !cpu->impl->attach_bus)
+		return MIMI_ERR_UNSUPPORTED;
 
-	return cpu->impl->attach_bus(cpu->private_data, bus, role);
+	int err = cpu->impl->attach_bus(cpu->private_data, bus, role);
+
+	if (err == 0)
+		return MIMI_OK;
+
+	return (err > 0) ? MIMI_6502_ERR_UNACC_DATA : err;
 }
 
-int mimi_cpu_tick(mimi_cpu_t* cpu)
+mimi_err_t mimi_cpu_tick(mimi_cpu_t* cpu)
 {
-	if (!cpu || !cpu->impl)
-		return -1;
+	if (!cpu)
+		return MIMI_ERR_BAD_ARG;
 
-	if (!cpu->impl->tick)
-		return -1;
+	if (!cpu->impl || !cpu->impl->tick)
+		return MIMI_ERR_UNSUPPORTED;
 
-	return cpu->impl->tick(cpu->private_data);
+	int err = cpu->impl->tick(cpu->private_data);
+
+	if (err == 0)
+		return MIMI_OK;
+
+	return (err > 0) ? MIMI_6502_ERR_UNACC_DATA : err;
 }
