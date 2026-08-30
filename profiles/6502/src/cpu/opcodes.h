@@ -4,7 +4,6 @@
 #include "6502.h"
 
 typedef struct instruction_s {
-    mode_t mode;
     int (*handle)(cpu_t* cpu, uint8_t* done);
 } instruction_t;
 
@@ -18,15 +17,17 @@ extern "C" {
 }
 #endif
 
-#define OPCODE_LIST(X)      \
-	X(a9, IMPLICIT_MODE)    \
-	X(ea, IMPLICIT_MODE)    \
+#define OPCODE_LIST(X)	\
+	X(a9)				\
+	X(ea)				\
+	X(8d)				\
+	X(4c)				\
 
-#define OPCODE_TO_FN(op, ...) x##op
+#define OPCODE_TO_FN(op) x##op
 
-#define OPCODE_DECL(op, ...)    \
+#define OPCODE_DECL(op)    \
     static int OPCODE_TO_FN(op)(cpu_t *cpu, uint8_t* done);
-#define DEFINE_OPCODE(op, ...) \
+#define DEFINE_OPCODE(op) \
     static int OPCODE_TO_FN(op)(cpu_t *cpu, uint8_t* done)
 
 #endif

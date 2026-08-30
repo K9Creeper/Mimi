@@ -58,6 +58,7 @@ typedef struct cpu_s {
 
 	mode_t mode;
 	mimi_bus_t* bus;
+	register_t  data;
 
 	cpu_sequence_t cur_seq;
 	uint8_t  cycle;

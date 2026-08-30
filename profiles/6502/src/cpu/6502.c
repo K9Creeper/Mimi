@@ -14,8 +14,8 @@
 static inline address_t get_stack_address(cpu_t* cpu);
 static inline void update_cpu_seq(cpu_t* cpu, cpu_sequence_t seq);
 
-static inline mimi_err_t cpu_read(cpu_t* cpu, address_t address, uint8_t* data);
-static inline mimi_err_t cpu_write(cpu_t* cpu, address_t address, const uint8_t* data);
+static inline mimi_err_t cpu_read(cpu_t* cpu, address_t address);
+static inline mimi_err_t cpu_write(cpu_t* cpu, address_t address);
 
 static int tick_reset(cpu_t* cpu);
 static int tick_fetch(cpu_t* cpu);
@@ -128,6 +128,8 @@ static int tick(cpu_t* cpu)
 		}
 	}
 
+	cpu->cycles++;
+
 	{
 		printf("6502 State:\n");
 		printf("  PC:     $%04X\n", (unsigned int)cpu->PC);
@@ -153,7 +155,6 @@ static int tick(cpu_t* cpu)
 		printf("  Cycles: %llu\n", (unsigned long long)cpu->cycles);
 	}
 
-	cpu->cycles++;
 	return ret;
 }
 
@@ -161,15 +162,14 @@ static int tick_reset(cpu_t* cpu)
 {
 	if (!cpu)
 		return MIMI_6502_ERR_UNACC_DATA;
-
+	
 	switch (cpu->cycle)
 	{
 		case 0:
 		case 1:
 		case 2:
 		{
-			uint8_t dummy;
-			mimi_err_t err = cpu_read(cpu, MIMI_6502_RESET_DUMMY_ADDRESS, &dummy);
+			mimi_err_t err = cpu_read(cpu, MIMI_6502_RESET_DUMMY_ADDRESS);
 
 			if (err == MIMI_OK) {
 				cpu->cycle++;
@@ -186,8 +186,7 @@ static int tick_reset(cpu_t* cpu)
 		{
 			address_t addr = get_stack_address(cpu);
 
-			uint8_t dummy;
-			mimi_err_t err = cpu_read(cpu, addr, &dummy);
+			mimi_err_t err = cpu_read(cpu, addr);
 
 			if (err == MIMI_OK) {
 				cpu->SP--;
@@ -201,11 +200,10 @@ static int tick_reset(cpu_t* cpu)
 
 		case 6:
 		{
-			uint8_t low_reset;
-			mimi_err_t err = cpu_read(cpu, MIMI_6502_RESET_VECTOR_LO, &low_reset);
+			mimi_err_t err = cpu_read(cpu, MIMI_6502_RESET_VECTOR_LO);
 
 			if (err == MIMI_OK) {
-				cpu->PC = ((cpu->PC & 0xFF00) | low_reset);
+				cpu->PC = ((cpu->PC & 0xFF00) | cpu->data);
 				cpu->flags.I = 1;
 				cpu->cycle++;
 				return MIMI_6502_OK;
@@ -217,11 +215,10 @@ static int tick_reset(cpu_t* cpu)
 
 		case 7:
 		{
-			uint8_t high_reset;
-			mimi_err_t err = cpu_read(cpu, MIMI_6502_RESET_VECTOR_HI, &high_reset);
+			mimi_err_t err = cpu_read(cpu, MIMI_6502_RESET_VECTOR_HI);
 
 			if (err == MIMI_OK) {
-				cpu->PC |= ((address_t)(high_reset << 8) & 0xFF00);
+				cpu->PC |= ((address_t)(cpu->data << 8) & 0xFF00);
 				update_cpu_seq(cpu, CPU_SEQ_FETCH);
 				return MIMI_6502_OK;
 			}
@@ -251,12 +248,11 @@ static int tick_fetch(cpu_t* cpu)
 		{
 			address_t addr = cpu->PC;
 
-			uint8_t instruction;
-			mimi_err_t err = cpu_read(cpu, addr, &instruction);
+			mimi_err_t err = cpu_read(cpu, addr);
 
 			if (err == MIMI_OK)
 			{
-				cpu->IR = instruction;
+				cpu->IR = cpu->data;
 				cpu->PC++;
 				cpu->cycle++;
 
@@ -283,11 +279,8 @@ static int tick_execute(cpu_t* cpu)
 		return MIMI_6502_ERR_UNACC_DATA;
 
 	const instruction_t* instr = lookup_opcode(cpu->IR);
-	if (!instr || instr->mode != cpu->mode)
+	if (!instr || !instr->handle)
 		return MIMI_6502_ERR_NOT_FOUND;
-
-	if (!instr->handle)
-		return MIMI_6502_ERR_GENERIC;
 
 	uint8_t instr_done = 1;
 	int err = instr->handle(cpu, &instr_done);
@@ -305,30 +298,29 @@ static int tick_execute(cpu_t* cpu)
 	return MIMI_6502_OK;
 }
 
-static inline mimi_err_t cpu_read(cpu_t* cpu, address_t address, uint8_t* data)
+static inline mimi_err_t cpu_read(cpu_t* cpu, address_t address)
 {
 	mimi_bus_request_t req = {
 		.access = MIMI_BUS_READ,
 		.address = (mimi_address_t)address,
-		.data.read = data,
+		.data.read = &cpu->data,
 		.size = sizeof(uint8_t)
 	};
 
 	return mimi_bus_access(cpu->bus, &req);
 }
 
-static inline mimi_err_t cpu_write(cpu_t* cpu, address_t address, const uint8_t* data)
+static inline mimi_err_t cpu_write(cpu_t* cpu, address_t address)
 {
 	mimi_bus_request_t req = {
 		.access = MIMI_BUS_WRITE,
 		.address = (mimi_address_t)address,
-		.data.write = data,
+		.data.write = &cpu->data,
 		.size = sizeof(uint8_t)
 	};
 
 	return mimi_bus_access(cpu->bus, &req);
 }
-
 static inline address_t get_stack_address(cpu_t* cpu)
 {
 	return MIMI_6502_STACK_PAGE | cpu->SP;
@@ -336,6 +328,14 @@ static inline address_t get_stack_address(cpu_t* cpu)
 
 static inline void update_cpu_seq(cpu_t* cpu, cpu_sequence_t seq)
 {
+	static const char* seq_str[] = {
+		[CPU_SEQ_RESET] = "RESET",
+		[CPU_SEQ_FETCH] = "FETCH",
+		[CPU_SEQ_EXECUTE] = "EXECUTE",
+		[CPU_SEQ_INTERRUPT] = "INTERRUPT"
+	};
+
 	cpu->cur_seq = seq;
 	cpu->cycle = 0;
+	printf("Switched to %s.\n", seq_str[seq]);
 }
